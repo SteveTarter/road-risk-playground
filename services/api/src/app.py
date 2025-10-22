@@ -1,9 +1,16 @@
+import io
 import os
+import json
 import requests
 import math
-
+import boto3
+import joblib
+import numpy as np
+import pandas as pd
 import geopandas as gpd
+import lightgbm as lgb
 
+from shapely.geometry import shape
 from flask import Flask, render_template_string, url_for, send_file, abort, request, jsonify, Response
 
 # Return the CRS for Universal Transverse Mercater (UTM) Coordinate Reference System for the latitude 
@@ -30,9 +37,6 @@ def get_utm_crs(lat: float, lng: float) -> str:
 
 
 # Next, define a function to get the directions between two points from Mapbox, and return the raw response as well as a GeoPandas representation of the route.
-import json
-from shapely.geometry import shape
-
 def read_mapbox_directions(o_lat: float, o_lng: float, d_lat: float, d_lng: float) -> tuple[dict, gpd.GeoDataFrame]:
 
     mapbox_token = os.environ['MAPBOX_TOKEN']
@@ -134,9 +138,6 @@ def get_lane_count(mapbox_data: dict) -> bool:
 # Determine Curviness
 # One way to measure curviness is to look at the angle (if any) desribed by three points.  To figure out the angle 
 # of the turn, we create two arrows from the middle point, then measure the angle between them.
-import math
-import numpy as np
-
 def angle_p1p2p3(p1: float, p2: float, p3: float) -> float:
     v1 = np.array([p1[0] - p2[0], p1[1] - p2[1]], dtype=float)
     v2 = np.array([p3[0] - p2[0], p3[1] - p2[1]], dtype=float)
@@ -155,8 +156,6 @@ def angle_p1p2p3(p1: float, p2: float, p3: float) -> float:
 
 # Next, let's define a function that iterates through all of a LineString's points, and calculates the angles to 
 # the successive points.  We'll use this to determine overall curviness.
-import numpy as np
-import pandas as pd
 
 def calculate_linestring_curvature(linestring: dict) -> list[float]:
     """
@@ -351,7 +350,7 @@ def get_current_weather(mapbox_data: dict) -> dict:
         
     return 'clear'
 
-def safe_quantile_bins(s: pd.Series, bins, labels, include_lowest, right):
+def safe_quantile_bins(s: pd.Series, bins, labels):
     s = s.astype(float)
     # Fallback if no variation or too few rows
     if s.nunique(dropna=True) < 2 or len(s) < 6:
@@ -370,6 +369,10 @@ categorical_features = [
     'road_type', 'lighting', 'weather', 'time_of_day', 'holiday_x_lighting',
     'weather_lighting', 'curvature_bin', 'speed_x_curvature_bin'
 ]
+
+# This argument isn't needed for inference, but set here so that feature_engineer() can be slotted in
+# here when changed.  (Until I figure out how to segregate common code in the pythonic way.)
+TARGET = "accident_risk"
 
 def feature_engineer(df: pd.DataFrame, target: str = TARGET, drop_duplicates:bool = True) -> pd.DataFrame:
     """
@@ -391,6 +394,10 @@ def feature_engineer(df: pd.DataFrame, target: str = TARGET, drop_duplicates:boo
     # The num_reported_accidents is impossible to derive when in production, and it's leaky, too.  Drop it.
     # df_engineered = df_engineered.drop('num_reported_accidents', axis=1)
     
+    # This feature was used in training, but is underivable.  Send in a zero here.
+    # TODO - send in a argument so users can "what if".
+    df_engineered['num_reported_accidents'] = pd.Series(np.zeros(len(df), dtype=float))
+
     # Create Interaction Features
     # Interaction between speed limit and road curvature
     # Add a small epsilon to curvature to prevent division by zero
@@ -431,11 +438,39 @@ def feature_engineer(df: pd.DataFrame, target: str = TARGET, drop_duplicates:boo
 
     return df_engineered
 
-# Start the application
+### INITIALIZATION ###
+# Get the model location early.  If we can't get these, we can't do squat.
+MODEL_S3_BUCKET = os.environ["MODEL_S3_BUCKET"]
+MODEL_S3_PREFIX = os.environ["MODEL_S3_PREFIX"] 
+
+# Trim trailing slash, if present
+if MODEL_S3_PREFIX[-1] == '/':
+  MODEL_S3_PREFIX = MODEL_S3_PREFIX[:-1]
+
+_model = None
+_s3 = boto3.client("s3")
+
+def _load_bytes(key: str) -> bytes:
+    obj = _s3.get_object(Bucket=MODEL_S3_BUCKET, Key=key)
+    return obj["Body"].read()
+
+def _init():
+  global _model, _meta
+  if _model: 
+    print(f"Model '{MODEL_S3_PREFIX}/model.pkl' already loaded; skipping loading.")
+    return
+    
+  _meta = json.loads(_load_bytes(f"{MODEL_S3_PREFIX}/meta.json"))
+  _model = joblib.load(io.BytesIO(_load_bytes(f"{MODEL_S3_PREFIX}/model.pkl")))
+  print(f"Model '{MODEL_S3_PREFIX}/model.pkl' loaded.")
+
+### Start the application ###
 app = Flask(__name__)
 
 @app.route("/drive-risk")
 def drive_risk_query():
+    _init()
+
     # Use request.args.get() to pull parameters from the query string
     o_lat = request.args.get('o_lat', type=float)
     o_lng = request.args.get('o_lng', type=float)
@@ -455,6 +490,7 @@ def drive_risk_query():
 
     # Get the Mapbox Directions and GeoDataframe for the requested trip.
     mapbox_data, geo_df = read_mapbox_directions(o_lat, o_lng, d_lat, d_lng)
+    print(f"Mapbox Directions obtained for route between {o_lat:.6f}, {o_lng:.6f}, and {d_lat:.6f}, {d_lng:.6f}")
 
     # Use the current time for all time-based
     road_type = get_road_type(mapbox_data)
@@ -492,21 +528,19 @@ def drive_risk_query():
     print(f"Model inputs dataframe after FE: {model_inputs_df}")
 
     # Now, call the ML model
-    # TBD
-    # prediction = final_model.predict(model_inputs_df)
-    prediction = 'TBD'
+    prediction = _model.predict(model_inputs_df)
+
+    print(f"Received prediction: {prediction}")
 
     # Create a record with everything to send back
     response = {
         'mapbox_data': mapbox_data,
         'model_inputs': model_inputs,
-        'prediction': prediction
+        'prediction': prediction[0]
     }
 
     return response
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=9400, debug=False)
-
-
 
