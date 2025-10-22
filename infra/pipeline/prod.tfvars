@@ -15,3 +15,9 @@ tags = {
   env = "prod"
 }
 
+ml_model_storage   = "ml-road-risk-playground"
+
+ml_model_tags = {
+  app = "road-risk-playground"
+  env = "prod"
+}

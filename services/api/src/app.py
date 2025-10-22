@@ -368,17 +368,8 @@ def safe_quantile_bins(s: pd.Series, bins, labels, include_lowest, right):
 # Instead of one-hot encoding, we'll tell LightGBM which columns are categorical.
 categorical_features = [
     'road_type', 'lighting', 'weather', 'time_of_day', 'holiday_x_lighting',
-    'weather_lighting', 'curvature_bin', 'speed_x_curvature_bin', 'road_type_x_lighting',
-    'road_type_x_weather', 'road_type_x_time_of_day', 'speed_limit_bin'
+    'weather_lighting', 'curvature_bin', 'speed_x_curvature_bin'
 ]
-
-TARGET = "accident_risk"
-
-TIME_OF_DAY_ORDER = {'morning': 0, 'afternoon': 1, 'evening': 2}
-TIME_OF_DAY_PERIOD = len(TIME_OF_DAY_ORDER)
-
-SPEED_LIMIT_BINS = [0, 30, 40, 50, 60, 80]
-SPEED_LIMIT_LABELS = ['<=30', '31-40', '41-50', '51-60', '61+']
 
 def feature_engineer(df: pd.DataFrame, target: str = TARGET, drop_duplicates:bool = True) -> pd.DataFrame:
     """
@@ -396,58 +387,39 @@ def feature_engineer(df: pd.DataFrame, target: str = TARGET, drop_duplicates:boo
     # If requested, remove any duplicate rows
     if drop_duplicates:
         df_engineered = df_engineered.drop_duplicates()
-
-    # The num_reported_accidents is impossible to derive when in production, and it's leaky, too.  Drop it.
-    df_engineered = df_engineered.drop('num_reported_accidents', axis=1, errors='ignore')
     
-    # Interactions with speed limit
+    # The num_reported_accidents is impossible to derive when in production, and it's leaky, too.  Drop it.
+    # df_engineered = df_engineered.drop('num_reported_accidents', axis=1)
+    
+    # Create Interaction Features
+    # Interaction between speed limit and road curvature
+    # Add a small epsilon to curvature to prevent division by zero
     df_engineered['speed_curvature_ratio'] = df_engineered['speed_limit'] / (df_engineered['curvature'] + 1e-6)
-    df_engineered['speed_per_lane'] = df_engineered['speed_limit'].astype(float) / df_engineered['num_lanes'].astype(float)
 
     # Combined environmental conditions
     df_engineered['weather_lighting'] = df_engineered['weather'].astype(str) + '_' + df_engineered['lighting'].astype(str)
 
-    # Curvature quantile bins
+    # Binning Curvature
+    # Create categorical bins for the curvature feature.
+    # The quantiles are chosen to split the data into meaningful groups.
     df_engineered['curvature_bin'] = safe_quantile_bins(
         df_engineered['curvature'],
-        [0.0, 1/6, 2/6, 3/6, 4/6, 5/6, 1.0],
-        ["very_low", "low", "mid_low", "mid_high", "high", "very_high"],
-        include_lowest=True,
-        right=True
+        [0, 0.25, 0.75, 1.0],
+        ['low', 'medium', 'high']
     ).astype(str)
-    
-    # Speed limit bins / residuals
-    df_engineered['speed_limit_bin'] = pd.cut(
-        df_engineered['speed_limit'],
-        bins=SPEED_LIMIT_BINS,
-        labels=SPEED_LIMIT_LABELS,
-        include_lowest=True,
-        right=True
-    ).astype(str)
-    SPEED_LIMIT_BIN_MEAN = df_engineered.groupby('speed_limit_bin')['speed_limit'].mean().to_dict()
-    df_engineered['speed_limit_residual'] = df_engineered['speed_limit'] - df_engineered['speed_limit_bin'].map(SPEED_LIMIT_BIN_MEAN)
-    df_engineered['speed_limit_residual'] = df_engineered['speed_limit_residual'].fillna(0.0)
 
-    # Polynomial features
+    # Create Polynomial Features
+    # Squaring the most correlated features to capture non-linear relationships
     df_engineered['curvature_sq'] = df_engineered['curvature'] ** 2
     df_engineered['speed_limit_sq'] = df_engineered['speed_limit'] ** 2
 
-    # Interactions involving curvature bins
+    # More Advanced Interactions
+    # Interact the new curvature bins with the speed limit.
     df_engineered['speed_x_curvature_bin'] = df_engineered['speed_limit'].astype(str) + '_' + df_engineered['curvature_bin']
 
-    # Other categorical interactions
+    # Time-based Interactions
+    # The effect of lighting might differ on a holiday.
     df_engineered['holiday_x_lighting'] = df_engineered['holiday'].astype(str) + '_' + df_engineered['lighting'].astype(str)
-    df_engineered['road_type_x_lighting'] = df_engineered['road_type'].astype(str) + '_' + df_engineered['lighting'].astype(str)
-    df_engineered['road_type_x_weather'] = df_engineered['road_type'].astype(str) + '_' + df_engineered['weather'].astype(str)
-    df_engineered['road_type_x_time_of_day'] = df_engineered['road_type'].astype(str) + '_' + df_engineered['time_of_day'].astype(str)
-
-    # Cyclical encoding for time of day
-    df_engineered['time_of_day_index'] = df_engineered['time_of_day'].map(TIME_OF_DAY_ORDER).fillna(-1).astype(int)
-    angles = np.zeros(len(df_engineered), dtype=float)
-    valid_tod = df_engineered['time_of_day_index'] >= 0
-    angles[valid_tod] = 2 * np.pi * df_engineered.loc[valid_tod, 'time_of_day_index'] / TIME_OF_DAY_PERIOD
-    df_engineered['time_of_day_sin'] = np.sin(angles)
-    df_engineered['time_of_day_cos'] = np.cos(angles)
 
     # Convert boolean features to integers for the model
     bool_cols = df_engineered.select_dtypes(include='bool').columns
@@ -455,8 +427,7 @@ def feature_engineer(df: pd.DataFrame, target: str = TARGET, drop_duplicates:boo
 
     # Convert categorical columns to the 'category' dtype for LightGBM
     for col in categorical_features:
-        if col in df_engineered.columns:
-            df_engineered[col] = df_engineered[col].astype('category')
+        df_engineered[col] = df_engineered[col].astype('category')
 
     return df_engineered
 

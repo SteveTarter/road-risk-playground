@@ -2,6 +2,12 @@ locals {
   bucket_name = "${var.subdomain}.${var.domain_name}"
 }
 
+module "lambda_python" {
+  source            = "../modules/lambda_python"
+  ml_model_storage  = var.ml_model_storage
+  ml_model_tags     = var.ml_model_tags
+}
+
 module "s3_static_site" {
   source            = "../modules/s3_static_site"
   bucket_name       = local.bucket_name

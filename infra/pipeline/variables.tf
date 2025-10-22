@@ -45,3 +45,11 @@ variable "tags" {
   default = {}
 }
 
+variable "ml_model_storage" {
+  type    = string
+}
+
+variable "ml_model_tags" {
+  type    = map(string)
+  default = {}
+}
