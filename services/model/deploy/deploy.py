@@ -14,13 +14,15 @@ s3 = boto3.client("s3")
 # Get the version from the file in this directory
 with open("version.txt", "r") as f:
   version = f.read()
+  if version[-1] == '\n':
+    version = version[:-1]
 
 bucket = args.bucket
 model_dir = args.model_dir
 
 # Ensure the model_dir doesn't have trailing slash.
 if model_dir[-1] == '/':
-    model_dir = model_dir[:-1]
+  model_dir = model_dir[:-1]
 
 dest_prefix = f"models/road-risk-playground/{version}/"
 
