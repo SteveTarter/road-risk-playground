@@ -1,6 +1,0 @@
-aws-wsgi
-geopandas
-lightgbm
-joblib
-Pillow
-requests
