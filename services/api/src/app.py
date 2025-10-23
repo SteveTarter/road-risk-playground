@@ -4,6 +4,7 @@ import json
 import requests
 import math
 import boto3
+import awsgi
 import joblib
 import numpy as np
 import pandas as pd
@@ -544,3 +545,5 @@ def drive_risk_query():
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=9400, debug=False)
 
+def lambda_handler(event, context):
+  return awsgi.response(app, event, context)

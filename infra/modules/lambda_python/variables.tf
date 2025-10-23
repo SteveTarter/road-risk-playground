@@ -3,9 +3,30 @@ variable "ml_model_storage" {
   type        = string
 }
 
+variable "ml_model_prefix" {
+  description = "Subdirectory in ml_model_storage containing ML model."
+  type        = string
+}
+
+variable "image_url" {
+  description = "URL of ECR image for lambda function"
+  type        = string
+}
+
 variable "ml_model_tags" {
   description = "Tags to apply to ML model S3 resources."
   type        = map(string)
   default     = {}
+}
+
+variable "mapbox_token" {
+  description = "Access token for Mapbox API"
+  type        = string
+}
+
+variable "log_retention_days" {
+  description = "Number of days to retain CloudWatch logs"
+  type        = number
+  default     = 30
 }
 

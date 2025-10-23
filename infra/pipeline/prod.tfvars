@@ -16,6 +16,10 @@ tags = {
 }
 
 ml_model_storage   = "ml-road-risk-playground"
+ml_model_prefix    = "models/road-risk-playground/0.1.0/"
+image_url          = "755935564186.dkr.ecr.us-east-1.amazonaws.com/road-risk-playground:latest"
+
+mapbox_token       = "pk.eyJ1IjoidGFydGVyd2FyZXN0ZXZlIiwiYSI6ImNseGoyY2p3ZDFwMWYyaXB3bjRlenJqeXMifQ.aWxwf9Ju_O29ctHsszGeAw"
 
 ml_model_tags = {
   app = "road-risk-playground"
