@@ -1,5 +1,8 @@
 FROM public.ecr.aws/lambda/python:3.12
 
+# Add OpenMP (and Fortran runtime, often needed by numpy/lightgbm)
+RUN dnf -y install libgomp libgfortran && dnf clean all
+
 # Copy and install Python deps
 COPY requirements.txt .
 RUN pip install --upgrade pip && \
@@ -7,6 +10,9 @@ RUN pip install --upgrade pip && \
 
 # App code
 COPY app.py ${LAMBDA_TASK_ROOT}
+
+# Sanity check during build
+RUN python -c "import lightgbm, numpy; print('lightgbm ok')"
 
 # Set the handler
 CMD ["app.lambda_handler"]

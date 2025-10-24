@@ -4,8 +4,8 @@ import json
 import requests
 import math
 import boto3
-import awsgi
 import joblib
+import traceback
 import numpy as np
 import pandas as pd
 import geopandas as gpd
@@ -468,20 +468,10 @@ def _init():
 ### Start the application ###
 app = Flask(__name__)
 
-@app.route("/drive-risk")
-def drive_risk_query():
+def calc_drive_risk(o_lat: float, o_lng: float, d_lat: float, d_lng: float, date_str: str):
+
+    # Load the model
     _init()
-
-    # Use request.args.get() to pull parameters from the query string
-    o_lat = request.args.get('o_lat', type=float)
-    o_lng = request.args.get('o_lng', type=float)
-    d_lat = request.args.get('d_lat', type=float)
-    d_lng = request.args.get('d_lng', type=float)
-    date_str = request.args.get('date_str', type=str)
-
-    # Check that we received all required parameters
-    if None in [o_lat, o_lng, d_lat, d_lng]:
-        return "Error: Missing one or more coordinate parameters.", 400
 
     # If the datetime string was supplied, convert it.  If not present, use current time.
     if date_str:
@@ -542,8 +532,57 @@ def drive_risk_query():
 
     return response
 
+@app.route("/drive-risk")
+def drive_risk_query():
+
+    # Use request.args.get() to pull parameters from the query string
+    o_lat = request.args.get('o_lat', type=float)
+    o_lng = request.args.get('o_lng', type=float)
+    d_lat = request.args.get('d_lat', type=float)
+    d_lng = request.args.get('d_lng', type=float)
+    date_str = request.args.get('date_str', type=str)
+
+    # Check that we received all required parameters
+    if None in [o_lat, o_lng, d_lat, d_lng]:
+        return "Error: Missing one or more coordinate parameters.", 400
+
+    response = calc_drive_risk(o_lat, o_lng, d_lat, d_lng, date_str)
+
+    return response
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=9400, debug=False)
 
 def lambda_handler(event, context):
-  return awsgi.response(app, event, context)
+    # Grab the Origin header (case‑insensitive)
+    headers = event.get("headers") or {}
+    try:
+        # Get the request payload from the request body
+        body = json.loads(event["body"])
+
+        o_lat = body["o_lat"]
+        o_lng = body["o_lng"]
+        d_lat = body["d_lat"]
+        d_lng = body["d_lng"]
+        date_str = body["date_str"]
+
+        response = calc_drive_risk(o_lat, o_lng, d_lat, d_lng, date_str)
+
+        return {
+            "statusCode": 200,
+            'headers': {
+                'Content-Type': 'application/json'
+            },
+            "body": json.dumps(response)
+        }
+
+    except Exception as e:
+        print(traceback.format_exc())
+        return {
+            "statusCode": 500,
+            "headers": {
+                'Content-Type': 'application/json'
+            },
+            "body": traceback.format_exc()
+        }
+
