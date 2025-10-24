@@ -3,7 +3,6 @@ import os
 import json
 import requests
 import math
-import boto3
 import joblib
 import traceback
 import numpy as np
@@ -440,30 +439,21 @@ def feature_engineer(df: pd.DataFrame, target: str = TARGET, drop_duplicates:boo
     return df_engineered
 
 ### INITIALIZATION ###
-# Get the model location early.  If we can't get these, we can't do squat.
-MODEL_S3_BUCKET = os.environ["MODEL_S3_BUCKET"]
-MODEL_S3_PREFIX = os.environ["MODEL_S3_PREFIX"] 
-
-# Trim trailing slash, if present
-if MODEL_S3_PREFIX[-1] == '/':
-  MODEL_S3_PREFIX = MODEL_S3_PREFIX[:-1]
-
 _model = None
-_s3 = boto3.client("s3")
-
-def _load_bytes(key: str) -> bytes:
-    obj = _s3.get_object(Bucket=MODEL_S3_BUCKET, Key=key)
-    return obj["Body"].read()
 
 def _init():
   global _model, _meta
   if _model: 
-    print(f"Model '{MODEL_S3_PREFIX}/model.pkl' already loaded; skipping loading.")
+    print(f"Model 'ml_model/export/model.pkl' already loaded; skipping loading.")
     return
     
-  _meta = json.loads(_load_bytes(f"{MODEL_S3_PREFIX}/meta.json"))
-  _model = joblib.load(io.BytesIO(_load_bytes(f"{MODEL_S3_PREFIX}/model.pkl")))
-  print(f"Model '{MODEL_S3_PREFIX}/model.pkl' loaded.")
+  with open('ml_model/export/meta.json', 'r') as f:
+    _meta = json.loads(f.read())
+
+  with open('ml_model/export/model.pkl', 'rb') as f:
+    _model = joblib.load(io.BytesIO(f.read()))
+
+  print(f"Model 'ml_model/export/model.pkl' loaded.")
 
 ### Start the application ###
 app = Flask(__name__)
