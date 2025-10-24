@@ -522,23 +522,42 @@ def calc_drive_risk(o_lat: float, o_lng: float, d_lat: float, d_lng: float, date
 
     return response
 
-@app.route("/drive-risk")
+@app.route("/drive-risk", methods=["GET", "POST"])
 def drive_risk_query():
+    if request.method == "POST":
+        if not request.is_json:
+            return jsonify(error="Content-Type must be application/json"), 415
 
-    # Use request.args.get() to pull parameters from the query string
-    o_lat = request.args.get('o_lat', type=float)
-    o_lng = request.args.get('o_lng', type=float)
-    d_lat = request.args.get('d_lat', type=float)
-    d_lng = request.args.get('d_lng', type=float)
-    date_str = request.args.get('date_str', type=str)
+        payload = request.get_json(silent=False)
 
-    # Check that we received all required parameters
-    if None in [o_lat, o_lng, d_lat, d_lng]:
-        return "Error: Missing one or more coordinate parameters.", 400
+        required = ("o_lat", "o_lng", "d_lat", "d_lng", "date_str")
+        missing = [k for k in required if k not in payload]
+        if missing:
+            return jsonify(error=f"Missing keys: {', '.join(missing)}"), 400
 
-    response = calc_drive_risk(o_lat, o_lng, d_lat, d_lng, date_str)
+        try:
+            o_lat   = float(payload["o_lat"])
+            o_lng   = float(payload["o_lng"])
+            d_lat   = float(payload["d_lat"])
+            d_lng   = float(payload["d_lng"])
+            date_str = str(payload["date_str"])
+        except (TypeError, ValueError):
+            return jsonify(error="Invalid types in JSON payload"), 400
 
-    return response
+    else:  # GET
+        o_lat   = request.args.get("o_lat", type=float)
+        o_lng   = request.args.get("o_lng", type=float)
+        d_lat   = request.args.get("d_lat", type=float)
+        d_lng   = request.args.get("d_lng", type=float)
+        date_str = request.args.get("date_str", type=str)
+        if None in (o_lat, o_lng, d_lat, d_lng) or date_str is None:
+            return jsonify(error="Missing one or more required query parameters"), 400
+
+    result = calc_drive_risk(o_lat, o_lng, d_lat, d_lng, date_str)
+    # If calc_drive_risk already returns a Flask Response, return it directly.
+    # Otherwise, jsonify the dict.
+    # return (result if hasattr(result, "response") else jsonify(result), 200)
+    return result
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=9400, debug=False)
