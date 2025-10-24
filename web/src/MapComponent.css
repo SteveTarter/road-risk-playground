@@ -1,0 +1,16 @@
+.map-wrapper {
+  width: min(80vw, 1400px);   /* never exceed 80% of screen width */
+  margin: 0 auto;             /* center it */
+}
+
+.map-viewport {
+  position: relative;
+  width: 100%;
+  height: clamp(320px, 80vh, 900px); /* responsive height with sane bounds */
+  /* Alternatively, keep a fixed aspect ratio:
+     aspect-ratio: 16 / 9; height: auto;  (then remove height above) */
+}
+
+.mapbox-canvas {
+  border-radius: 12px;        /* optional: nicer edges */
+}

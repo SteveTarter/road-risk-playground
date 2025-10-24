@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import NavBar from "./NavBar"
 import RoadRiskPlayground from "./RoadRiskPlayground";
 import InfoPanel from "./InfoPanel";
+import MapComponent from "./MapComponent";
 
 function App() {
   const [activeSection, setActiveSection] = useState('');
@@ -16,6 +17,7 @@ function App() {
       <RoadRiskPlayground />
       <hr />
       <InfoPanel activeSection={activeSection} />
+      <MapComponent />
     </div>
   );
 }
