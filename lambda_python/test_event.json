@@ -1,0 +1,11 @@
+{
+  "version": "2.0",
+  "routeKey": "POST /predict",
+  "rawPath": "/predict",
+  "rawQueryString": "",
+  "headers": { "content-type": "application/json" },
+  "requestContext": { "http": { "method": "POST", "path": "/predict" } },
+  "isBase64Encoded": false,
+  "body": "{\"o_lat\":32.759295,\"o_lng\":-97.503393,\"d_lat\":32.903862,\"d_lng\":-96.973375,\"date_str\":\"2025-10-24T16:20:00\"}"
+}
+

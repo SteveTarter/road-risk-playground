@@ -13,7 +13,7 @@ COPY app.py ${LAMBDA_TASK_ROOT}
 
 # Create directory for ML model and copy it there
 RUN mkdir -p ${LAMBDA_TASK_ROOT}/ml_model/export
-COPY /ml_model/export/* ${LAMBDA_TASK_ROOT}/ml_model/export
+COPY /ml_model/export/* ${LAMBDA_TASK_ROOT}/ml_model/export/
 
 # Sanity check during build
 RUN python -c "import lightgbm, numpy; print('lightgbm ok')"

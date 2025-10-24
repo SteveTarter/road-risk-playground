@@ -1,13 +1,3 @@
-variable "ml_model_storage" {
-  description = "Bucket to store ML model."
-  type        = string
-}
-
-variable "ml_model_prefix" {
-  description = "Subdirectory in ml_model_storage containing ML model."
-  type        = string
-}
-
 variable "image_url" {
   description = "URL of ECR image for lambda function"
   type        = string

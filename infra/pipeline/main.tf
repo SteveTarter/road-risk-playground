@@ -4,8 +4,6 @@ locals {
 
 module "lambda_python" {
   source             = "../modules/lambda_python"
-  ml_model_storage   = var.ml_model_storage
-  ml_model_prefix    = var.ml_model_prefix
   ml_model_tags      = var.ml_model_tags
   image_url          = var.image_url
   mapbox_token       = var.mapbox_token
