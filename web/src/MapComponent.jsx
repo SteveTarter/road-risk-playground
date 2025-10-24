@@ -5,11 +5,12 @@ import { Container, Card } from "react-bootstrap";
 import "./MapComponent.css"
 
 export default function MapComponent({ onSelect }) {
+  // eslint-disable-next-line
   const { map } = useMap();
   const containerRef = useRef(null);
 
   const [isMapLoaded, setIsMapLoaded] = useState(false);
-  const [isDataLoaded, setIsDataLoaded] = useState(true);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN;
@@ -21,7 +22,7 @@ export default function MapComponent({ onSelect }) {
   const onClick = useCallback((event) => {
     console.log("onClick()");
     console.log("@ (%d, %d)", event.point.x, event.point.y);
-  }, [map]);
+  }, []);
 
   const onLoad = useCallback(() => {
     setIsMapLoaded(true);
@@ -29,8 +30,17 @@ export default function MapComponent({ onSelect }) {
   }, []);
 
   const onZoom = useCallback((viewState) => {
+    // eslint-disable-next-line
     const currentZoom = viewState.zoom;
   }, []);
+
+  setIsDataLoaded(true);
+  setIsTransitioning(false);
+  var x = 0;
+  if (isMapLoaded()) {
+    x = 1;
+    console.log("Print %d because I have to to reference the variable x", x)
+  }
 
   return (
     <Container className="py-4">
