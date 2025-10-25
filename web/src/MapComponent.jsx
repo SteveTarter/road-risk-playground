@@ -1,7 +1,8 @@
-import Map, { useMap } from "react-map-gl";
+import Map, { useMap } from "react-map-gl/mapbox";
 import { useCallback, useRef, useState } from "react";
 import { SpinnerLoading } from "./Utils/SpinnerLoading"
 import { Container, Card } from "react-bootstrap";
+import GeocoderControl from "./GeocoderControl"
 import "./MapComponent.css"
 
 export default function MapComponent({ onSelect }) {
@@ -26,21 +27,18 @@ export default function MapComponent({ onSelect }) {
 
   const onLoad = useCallback(() => {
     setIsMapLoaded(true);
-    console.log("Map loaded");
-  }, []);
+    setIsDataLoaded(true);
+    setIsTransitioning(false);
+    if(isMapLoaded) {
+      console.log("Map loaded");
+    }
+  }, [isMapLoaded]);
 
   const onZoom = useCallback((viewState) => {
     // eslint-disable-next-line
     const currentZoom = viewState.zoom;
   }, []);
 
-  setIsDataLoaded(true);
-  setIsTransitioning(false);
-  var x = 0;
-  if (isMapLoaded()) {
-    x = 1;
-    console.log("Print %d because I have to to reference the variable x", x)
-  }
 
   return (
     <Container className="py-4">
@@ -66,6 +64,7 @@ export default function MapComponent({ onSelect }) {
             >
               {(isDataLoaded && !isTransitioning) ?
                 <>
+                  <GeocoderControl mapboxAccessToken={mapboxToken} position="top-left" />
                 </>
                 :
                 <div>
