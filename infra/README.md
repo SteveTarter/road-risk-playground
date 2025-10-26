@@ -38,11 +38,6 @@ ml_model_prefix    = "models/road-risk-playground/0.1.0/"
 image_url          = "<AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/road-risk-playground:latest"
 
 mapbox_token       = "<MAPBOX_TOKEN>"
-
-ml_model_tags = {
-  app = "road-risk-playground"
-  env = "prod"
-}
 ```
 
 ## Installation
@@ -51,7 +46,7 @@ Run the following commands:
 
 ```bash
 cd pipeline
-terraform init
+terraform init -upgrade
 terraform plan -var-file=prod.tfvars
 terraform apply -var-file=prod.tfvars
 ```

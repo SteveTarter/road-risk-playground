@@ -4,7 +4,7 @@ locals {
 
 module "lambda_python" {
   source             = "../modules/lambda_python"
-  ml_model_tags      = var.ml_model_tags
+  ml_model_tags      = var.tags
   image_url          = var.image_url
   mapbox_token       = var.mapbox_token
   log_retention_days = var.log_retention_days
@@ -76,3 +76,6 @@ output "fqdn" {
   value = module.cloudfront.fqdn
 }
 
+output "api_endpoint" {
+  value = module.api_gateway.invoke_url
+}

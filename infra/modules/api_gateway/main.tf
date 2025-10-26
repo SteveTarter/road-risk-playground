@@ -77,7 +77,7 @@ resource "aws_lambda_permission" "allow_apigw" {
   principal     = "apigateway.amazonaws.com"
 
   # Covers any stage/method/resource under this API
-  source_arn = "${aws_apigatewayv2_api.this.execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.this.execution_arn}/*/*"
 }
 
 # Custom domain + mapping + DNS
