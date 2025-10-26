@@ -3,6 +3,7 @@ import NavBar from "./NavBar"
 import RoadRiskPlayground from "./RoadRiskPlayground";
 import InfoPanel from "./InfoPanel";
 import MapComponent from "./MapComponent";
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 function App() {
   const [activeSection, setActiveSection] = useState('');

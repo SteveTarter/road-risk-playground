@@ -5,6 +5,7 @@ import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 
 export default function GeocoderControl(props) {
+
   const {
     mapboxAccessToken,
     position,
@@ -94,3 +95,13 @@ export default function GeocoderControl(props) {
 
   return marker;
 }
+
+const noop = () => {};
+
+GeocoderControl.defaultProps = {
+  marker: true,
+  onLoading: noop,
+  onResults: noop,
+  onResult: noop,
+  onError: noop
+};
