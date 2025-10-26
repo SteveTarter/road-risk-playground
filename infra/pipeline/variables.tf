@@ -4,56 +4,58 @@ variable "aws_region" {
 }
 
 variable "domain_name" {
-  type = string
+  description = "Apex domain, e.g., tarterware.com"
+  type        = string
 }
 
 variable "subdomain" {
-  type = string
+  description = "Host label, e.g., road-risk-playground"
+  type        = string
 }
 
 variable "hosted_zone_id" {
-  type = string
+  description = "Hosted zone ID for domain_name"
+  type        = string
 }
 
 variable "acm_certificate_arn" {
+  description = "ACM cert (must be in aws_region"
   type        = string
-  description = "Must be in us-east-1"
 }
 
 variable "price_class" {
-  type    = string
-  default = "PriceClass_100"
+  description = "CloudFront price class"
+  type        = string
+  default     = "PriceClass_100"
 }
 
 variable "default_root_object" {
-  type    = string
-  default = "index.html"
+  description = "Default root object for ststic S3 site"
+  type        = string
+  default     = "index.html"
 }
 
 variable "enable_access_logs" {
-  type    = bool
-  default = false
+  description = "Enable access logs"
+  type        = bool
+  default     = false
 }
 
 variable "logs_bucket_name" {
-  type    = string
-  default = null
+  description = "Bucket name to contain logs"
+  type        = string
+  default     = null
 }
 
 variable "tags" {
-  type    = map(string)
-  default = {}
+  description = "Tags to apply to all resources."
+  type        = map(string)
+  default     = {}
 }
 
 variable "image_url" {
   description = "URL of ECR image for lambda function"
   type        = string
-}
-
-variable "ml_model_tags" {
-  description = "Tags to apply to ML model S3 resources."
-  type        = map(string)
-  default     = {}
 }
 
 variable "mapbox_token" {

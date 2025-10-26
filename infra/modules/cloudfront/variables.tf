@@ -29,35 +29,38 @@ variable "price_class" {
 }
 
 variable "enable_access_logs" {
+  description = "Enable access logs"
   type    = bool
   default = false
 }
 
 variable "logs_bucket_name" {
+  description = "Bucket name to contain logs"
   type    = string
   default = null
 }
 
 variable "tags" {
+  description = "Tags to apply to all resources."
   type    = map(string)
   default = {}
 }
 
 # S3 origin inputs (from s3_static_site)
 variable "s3_bucket_id" {
-  type        = string
   description = "ID of the site bucket"
+  type        = string
 }
 variable "s3_bucket_arn" {
-  type        = string
   description = "ARN of the site bucket"
+  type        = string
 }
 variable "s3_bucket_name" {
-  type        = string
   description = "Name of the site bucket"
+  type        = string
 }
 variable "s3_bucket_regional_domain_name" {
-  type        = string
   description = "Regional domain name of the site bucket"
+  type        = string
 }
 
