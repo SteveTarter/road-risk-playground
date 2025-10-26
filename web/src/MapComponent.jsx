@@ -1,5 +1,5 @@
-import Map, { useMap } from "react-map-gl/mapbox";
-import { useCallback, useRef, useState } from "react";
+import Map from "react-map-gl/mapbox";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SpinnerLoading } from "./Utils/SpinnerLoading"
 import { Container, Card } from "react-bootstrap";
 import GeocoderControl from "./GeocoderControl"
@@ -7,12 +7,16 @@ import "./MapComponent.css"
 
 export default function MapComponent({ onSelect }) {
   // eslint-disable-next-line
-  const { map } = useMap();
+  const mapRef = useRef(null);
   const containerRef = useRef(null);
 
-  const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const [originLat, setOriginLat] = useState(null);
+  const [originLng, setOriginLng] = useState(null);
+  const [destinationLat, setDestinationLat] = useState(null);
+  const [destinationLng, setDestinationLng] = useState(null);
 
   const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN;
 
@@ -26,19 +30,72 @@ export default function MapComponent({ onSelect }) {
   }, []);
 
   const onLoad = useCallback(() => {
-    setIsMapLoaded(true);
     setIsDataLoaded(true);
     setIsTransitioning(false);
-    if(isMapLoaded) {
-      console.log("Map loaded");
-    }
-  }, [isMapLoaded]);
+  }, []);
 
   const onZoom = useCallback((viewState) => {
     // eslint-disable-next-line
     const currentZoom = viewState.zoom;
   }, []);
 
+  useEffect(() => {
+    const map = mapRef.current?.getMap?.();
+    if (!map) {
+      return;
+    }
+
+    if (originLat && originLng && destinationLat && destinationLng) {
+      var xMin = originLat < destinationLat ? originLat : destinationLat;
+      var xMax = originLat > destinationLat ? originLat : destinationLat;
+      var yMin = originLng < destinationLng ? originLng : destinationLng;
+      var yMax = originLng > destinationLng ? originLng : destinationLng;
+
+      map.fitBounds([
+        [yMin, xMin],
+        [yMax, xMax]
+      ],
+      {
+        padding: {top: 35, bottom:35, left: 35, right: 35}
+      })
+    }
+    else if (originLat && originLng) {
+      map.flyTo({
+        center: [originLng, originLat],
+        zoom: 15
+      })
+    }
+    else if (destinationLat && destinationLat) {
+      map.flyTo({
+        center: [destinationLng, destinationLat],
+        zoom: 15
+      })
+    }
+  }, [mapRef, originLat, originLng, destinationLat, destinationLng]);
+
+  const handleOriginPick = useCallback(({ lng, lat, result }) => {
+    console.log('Picked Origin:', { lng, lat, place: result?.place_name });
+    setOriginLat(lat);
+    setOriginLng(lng);
+  }, [setOriginLat, setOriginLng]);
+
+  const handleOriginClear = useCallback(() => {
+    console.log('Cleared Origin');
+    setOriginLat(null);
+    setOriginLng(null);
+  }, [setOriginLat, setOriginLng]);
+
+  const handleDestinationPick = useCallback(({ lng, lat, result }) => {
+    console.log('Picked Destination:', { lng, lat, place: result?.place_name });
+    setDestinationLat(lat);
+    setDestinationLng(lng);
+  }, [setDestinationLat, setDestinationLng]);
+
+  const handleDestinationClear = useCallback(() => {
+    console.log('Cleared Destination');
+    setDestinationLat(null);
+    setDestinationLng(null);
+  }, [setDestinationLat, setDestinationLng]);
 
   return (
     <Container className="py-4">
@@ -49,6 +106,7 @@ export default function MapComponent({ onSelect }) {
           <div ref={containerRef} className="map-viewport">
             <Map
               id="map"
+              ref={mapRef}
               mapStyle={mapStyle}
               mapboxAccessToken={mapboxToken}
               onLoad={() => onLoad()}
@@ -64,7 +122,20 @@ export default function MapComponent({ onSelect }) {
             >
               {(isDataLoaded && !isTransitioning) ?
                 <>
-                  <GeocoderControl mapboxAccessToken={mapboxToken} position="top-left" />
+                  <GeocoderControl
+                    mapboxAccessToken={mapboxToken}
+                    placeholder="Origin"
+                    position="top-left"
+                    onPick={handleOriginPick}
+                    onClear={handleOriginClear}
+                  />
+                  <GeocoderControl
+                    mapboxAccessToken={mapboxToken}
+                    placeholder="Destination"
+                    position="top-right"
+                    onPick={handleDestinationPick}
+                    onClear={handleDestinationClear}
+                  />
                 </>
                 :
                 <div>

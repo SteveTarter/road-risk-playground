@@ -14,6 +14,8 @@ export default function GeocoderControl(props) {
     onResults = () => {},
     onResult = () => {},
     onError = () => {},
+    onPick = () => {},
+    onClear = () => {},
     ...geocoderOpts
   } = props;
 
@@ -24,7 +26,8 @@ export default function GeocoderControl(props) {
       const ctrl = new MapboxGeocoder({
         ...geocoderOpts,
         accessToken: mapboxAccessToken,
-        marker: false
+        marker: false,
+        flyTo: false
       });
 
       ctrl.on('loading', onLoading);
@@ -38,17 +41,27 @@ export default function GeocoderControl(props) {
           (result.center ||
             (result.geometry?.type === 'Point' && result.geometry.coordinates));
 
-        if (location && markerProp) {
-          const markerProps = typeof markerProp === 'object' ? markerProp : {};
-          setMarker(
-            <Marker {...markerProps} longitude={location[0]} latitude={location[1]} />
-          );
+        if (location) {
+                    // notify parent
+          onPick({ lng: location[0], lat: location[1], result });
+
+          if (markerProp) {
+            const markerProps = typeof markerProp === 'object' ? markerProp : {};
+            setMarker(
+              <Marker {...markerProps} longitude={location[0]} latitude={location[1]} />
+            );
+          } else {
+            setMarker(null);
+          }
         } else {
           setMarker(null);
         }
       });
       ctrl.on('error', onError);
-
+      ctrl.on('clear', () => {
+        onClear();
+        setMarker(null);
+      })
       return ctrl;
     },
     {position}
