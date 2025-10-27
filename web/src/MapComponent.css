@@ -7,10 +7,19 @@
   position: relative;
   width: 100%;
   height: clamp(320px, 80vh, 900px); /* responsive height with sane bounds */
-  /* Alternatively, keep a fixed aspect ratio:
-     aspect-ratio: 16 / 9; height: auto;  (then remove height above) */
 }
 
 .mapbox-canvas {
-  border-radius: 12px;        /* optional: nicer edges */
+  border-radius: 12px;        /* nicer edges */
+}
+
+/* Give the first control in the top-left container a higher z-index
+   so its dropdown appears over the second control.
+*/
+.mapboxgl-ctrl-top-left .mapboxgl-ctrl:nth-child(1) {
+  z-index: 2;
+}
+
+.mapboxgl-ctrl-top-left .mapboxgl-ctrl:nth-child(2) {
+  z-index: 1;
 }

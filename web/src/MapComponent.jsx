@@ -60,12 +60,26 @@ export default function MapComponent({ onSelect }) {
       })
     }
     else if (originLat && originLng) {
+      map.fitBounds([
+        [originLng, originLat],
+        [originLng, originLat]
+      ],
+      {
+        padding: {top: 35, bottom:35, left: 35, right: 35}
+      })
       map.flyTo({
         center: [originLng, originLat],
         zoom: 15
       })
     }
-    else if (destinationLat && destinationLat) {
+    else if (destinationLat && destinationLng) {
+      map.fitBounds([
+        [destinationLng, destinationLat],
+        [destinationLng, destinationLat]
+      ],
+      {
+        padding: {top: 35, bottom:35, left: 35, right: 35}
+      })
       map.flyTo({
         center: [destinationLng, destinationLat],
         zoom: 15
@@ -96,6 +110,10 @@ export default function MapComponent({ onSelect }) {
     setDestinationLat(null);
     setDestinationLng(null);
   }, [setDestinationLat, setDestinationLng]);
+
+  const handleOriginLoading = useCallback(() => {
+    console.log('OnLoading');
+  }, []);
 
   return (
     <Container className="py-4">
@@ -128,13 +146,15 @@ export default function MapComponent({ onSelect }) {
                     position="top-left"
                     onPick={handleOriginPick}
                     onClear={handleOriginClear}
+                    onLoading={handleOriginLoading}
                   />
                   <GeocoderControl
                     mapboxAccessToken={mapboxToken}
                     placeholder="Destination"
-                    position="top-right"
+                    position="top-left"
                     onPick={handleDestinationPick}
                     onClear={handleDestinationClear}
+                    center={[destinationLng, destinationLat]}
                   />
                 </>
                 :

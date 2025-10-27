@@ -10,6 +10,7 @@ export default function GeocoderControl(props) {
     mapboxAccessToken,
     position,
     marker: markerProp = true,
+    onInit = () => {},
     onLoading = () => {},
     onResults = () => {},
     onResult = () => {},
@@ -20,6 +21,7 @@ export default function GeocoderControl(props) {
   } = props;
 
   const [marker, setMarker] = useState(null);
+  const [wasValid, setWasValid] = useState(false);
 
   const geocoder = useControl(
     () => {
@@ -50,6 +52,7 @@ export default function GeocoderControl(props) {
             setMarker(
               <Marker {...markerProps} longitude={location[0]} latitude={location[1]} />
             );
+            setWasValid(true);
           } else {
             setMarker(null);
           }
@@ -58,6 +61,10 @@ export default function GeocoderControl(props) {
         }
       });
       ctrl.on('error', onError);
+      ctrl.on('init', () => {
+        onInit()
+        console.log("wasValid: ", wasValid);
+      })
       ctrl.on('clear', () => {
         onClear();
         setMarker(null);
@@ -113,6 +120,7 @@ const noop = () => {};
 
 GeocoderControl.defaultProps = {
   marker: true,
+  onInit:noop,
   onLoading: noop,
   onResults: noop,
   onResult: noop,
