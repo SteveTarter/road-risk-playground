@@ -4,6 +4,7 @@ import { SpinnerLoading } from "./Utils/SpinnerLoading"
 import { Container, Card } from "react-bootstrap";
 import GeocoderControl from "./GeocoderControl"
 import "./MapComponent.css"
+import RouteComponent from "./RouteComponent";
 
 export default function MapComponent({ onSelect }) {
   // eslint-disable-next-line
@@ -155,6 +156,12 @@ export default function MapComponent({ onSelect }) {
                     onPick={handleDestinationPick}
                     onClear={handleDestinationClear}
                     center={[destinationLng, destinationLat]}
+                  />
+                  <RouteComponent
+                    originLat={originLat}
+                    originLng={originLng}
+                    destinationLat={destinationLat}
+                    destinationLng={destinationLng}
                   />
                 </>
                 :

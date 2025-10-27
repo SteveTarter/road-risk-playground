@@ -1,15 +1,12 @@
-import { useState } from 'react';
+import mapboxgl from 'mapbox-gl';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
-import {useControl, Marker} from 'react-map-gl/mapbox';
+import {useControl} from 'react-map-gl/mapbox';
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 
-export default function GeocoderControl(props) {
-
-  const {
+export default function GeocoderControl({
     mapboxAccessToken,
     position,
-    marker: markerProp = true,
     onInit = () => {},
     onLoading = () => {},
     onResults = () => {},
@@ -18,18 +15,16 @@ export default function GeocoderControl(props) {
     onPick = () => {},
     onClear = () => {},
     ...geocoderOpts
-  } = props;
+}) {
 
-  const [marker, setMarker] = useState(null);
-  const [wasValid, setWasValid] = useState(false);
-
-  const geocoder = useControl(
+  useControl(
     () => {
       const ctrl = new MapboxGeocoder({
         ...geocoderOpts,
         accessToken: mapboxAccessToken,
         marker: false,
-        flyTo: false
+        flyTo: false,
+        mapboxgl: mapboxgl
       });
 
       ctrl.on('loading', onLoading);
@@ -46,83 +41,22 @@ export default function GeocoderControl(props) {
         if (location) {
                     // notify parent
           onPick({ lng: location[0], lat: location[1], result });
-
-          if (markerProp) {
-            const markerProps = typeof markerProp === 'object' ? markerProp : {};
-            setMarker(
-              <Marker {...markerProps} longitude={location[0]} latitude={location[1]} />
-            );
-            setWasValid(true);
-          } else {
-            setMarker(null);
-          }
-        } else {
-          setMarker(null);
         }
       });
       ctrl.on('error', onError);
       ctrl.on('init', () => {
         onInit()
-        console.log("wasValid: ", wasValid);
       })
       ctrl.on('clear', () => {
         onClear();
-        setMarker(null);
       })
       return ctrl;
     },
     {position}
   );
 
-  if (geocoder._map) {
-    if (geocoder.getProximity() !== props.proximity && props.proximity !== undefined) {
-      geocoder.setProximity(props.proximity);
-    }
-    if (geocoder.getRenderFunction() !== props.render && props.render !== undefined) {
-      geocoder.setRenderFunction(props.render);
-    }
-    if (geocoder.getLanguage() !== props.language && props.language !== undefined) {
-      geocoder.setLanguage(props.language);
-    }
-    if (geocoder.getZoom() !== props.zoom && props.zoom !== undefined) {
-      geocoder.setZoom(props.zoom);
-    }
-    if (geocoder.getFlyTo() !== props.flyTo && props.flyTo !== undefined) {
-      geocoder.setFlyTo(props.flyTo);
-    }
-    if (geocoder.getPlaceholder() !== props.placeholder && props.placeholder !== undefined) {
-      geocoder.setPlaceholder(props.placeholder);
-    }
-    if (geocoder.getCountries() !== props.countries && props.countries !== undefined) {
-      geocoder.setCountries(props.countries);
-    }
-    if (geocoder.getTypes() !== props.types && props.types !== undefined) {
-      geocoder.setTypes(props.types);
-    }
-    if (geocoder.getMinLength() !== props.minLength && props.minLength !== undefined) {
-      geocoder.setMinLength(props.minLength);
-    }
-    if (geocoder.getLimit() !== props.limit && props.limit !== undefined) {
-      geocoder.setLimit(props.limit);
-    }
-    if (geocoder.getFilter() !== props.filter && props.filter !== undefined) {
-      geocoder.setFilter(props.filter);
-    }
-    if (geocoder.getOrigin() !== props.origin && props.origin !== undefined) {
-      geocoder.setOrigin(props.origin);
-    }
-  }
-
-  return marker;
+  return (
+    <>
+    </>
+  )
 }
-
-const noop = () => {};
-
-GeocoderControl.defaultProps = {
-  marker: true,
-  onInit:noop,
-  onLoading: noop,
-  onResults: noop,
-  onResult: noop,
-  onError: noop
-};
