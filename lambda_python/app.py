@@ -10,8 +10,17 @@ import pandas as pd
 import geopandas as gpd
 import lightgbm as lgb
 
+from flask_cors import CORS
 from shapely.geometry import shape
 from flask import Flask, render_template_string, url_for, send_file, abort, request, jsonify, Response
+
+# Whitelisted CORS origins
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://road-risk-playground.tarterware.info:3000",
+    "https://road-risk-playground.tarterware.com"
+]
+
 
 # Return the CRS for Universal Transverse Mercater (UTM) Coordinate Reference System for the latitude 
 # and longitude given.  UTM coordinate systems don't distort due to latitude
@@ -458,6 +467,9 @@ def _init():
 ### Start the application ###
 app = Flask(__name__)
 
+# Initialize CORS, passing in allowed origins
+CORS(app, origins=ALLOWED_ORIGINS)
+
 def calc_drive_risk(o_lat: float, o_lng: float, d_lat: float, d_lng: float, date_str: str):
 
     # Load the model
@@ -526,7 +538,7 @@ def calc_drive_risk(o_lat: float, o_lng: float, d_lat: float, d_lng: float, date
 def drive_risk_query():
     if request.method == "POST":
         if not request.is_json:
-            return jsonify(error="Content-Type must be application/json"), 415
+            return jsonify(error="Content-Type must be application/json"), 400
 
         payload = request.get_json(silent=False)
 
@@ -554,10 +566,8 @@ def drive_risk_query():
             return jsonify(error="Missing one or more required query parameters"), 400
 
     result = calc_drive_risk(o_lat, o_lng, d_lat, d_lng, date_str)
-    # If calc_drive_risk already returns a Flask Response, return it directly.
-    # Otherwise, jsonify the dict.
-    # return (result if hasattr(result, "response") else jsonify(result), 200)
-    return result
+
+    return jsonify(result), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=9400, debug=False)
@@ -565,6 +575,28 @@ if __name__ == "__main__":
 def lambda_handler(event, context):
     # Grab the Origin header (case‑insensitive)
     headers = event.get("headers") or {}
+    origin = headers.get("Origin") or headers.get("origin", "")
+    
+    # Decide which origin to return
+    acao = origin if origin in ALLOWED_ORIGINS else ALLOWED_ORIGINS[0]
+
+    # Common CORS headers
+    cors_headers = {
+        "Access-Control-Allow-Origin": acao,
+        "Access-Control-Allow-Headers": "Content-Type,Authorization",
+        "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
+    }
+
+    if event["httpMethod"] == "OPTIONS":
+        return {
+            "statusCode": 200,
+            'headers': {
+                **cors_headers,
+                'Content-Type': 'application/json'
+            },
+            "body": json.dumps({"message": "CORS preflight OK"})
+        }
+
     try:
         # Get the request payload from the request body
         body = json.loads(event["body"])

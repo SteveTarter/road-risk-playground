@@ -11,8 +11,7 @@ export default function MapComponent({ onSelect }) {
   const mapRef = useRef(null);
   const containerRef = useRef(null);
 
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(false);
 
   const [originLat, setOriginLat] = useState(null);
   const [originLng, setOriginLng] = useState(null);
@@ -31,8 +30,7 @@ export default function MapComponent({ onSelect }) {
   }, []);
 
   const onLoad = useCallback(() => {
-    setIsDataLoaded(true);
-    setIsTransitioning(false);
+    setIsDataLoading(false);
   }, []);
 
   const onZoom = useCallback((viewState) => {
@@ -89,37 +87,27 @@ export default function MapComponent({ onSelect }) {
   }, [mapRef, originLat, originLng, destinationLat, destinationLng]);
 
   const handleOriginPick = useCallback(({ lng, lat, result }) => {
-    console.log('Picked Origin:', { lng, lat, place: result?.place_name });
     setOriginLat(lat);
     setOriginLng(lng);
   }, [setOriginLat, setOriginLng]);
 
   const handleOriginClear = useCallback(() => {
-    console.log('Cleared Origin');
     setOriginLat(null);
     setOriginLng(null);
   }, [setOriginLat, setOriginLng]);
 
   const handleDestinationPick = useCallback(({ lng, lat, result }) => {
-    console.log('Picked Destination:', { lng, lat, place: result?.place_name });
     setDestinationLat(lat);
     setDestinationLng(lng);
   }, [setDestinationLat, setDestinationLng]);
 
   const handleDestinationClear = useCallback(() => {
-    console.log('Cleared Destination');
     setDestinationLat(null);
     setDestinationLng(null);
   }, [setDestinationLat, setDestinationLng]);
 
-  const handleOriginLoading = useCallback(() => {
-    console.log('OnLoading');
-  }, []);
-
   return (
     <Container className="py-4">
-      <h1 className="text-center mb-4">Map</h1>
-
       <Card className="mb-4 map-wrapper">
         <Card.Body>
           <div ref={containerRef} className="map-viewport">
@@ -139,35 +127,34 @@ export default function MapComponent({ onSelect }) {
               onZoom={onZoom}
               style={{ width: "100%", height: "100%" }}   // critical: fill the viewport box
             >
-              {(isDataLoaded && !isTransitioning) ?
-                <>
-                  <GeocoderControl
-                    mapboxAccessToken={mapboxToken}
-                    placeholder="Origin"
-                    position="top-left"
-                    onPick={handleOriginPick}
-                    onClear={handleOriginClear}
-                    onLoading={handleOriginLoading}
-                  />
-                  <GeocoderControl
-                    mapboxAccessToken={mapboxToken}
-                    placeholder="Destination"
-                    position="top-left"
-                    onPick={handleDestinationPick}
-                    onClear={handleDestinationClear}
-                    center={[destinationLng, destinationLat]}
-                  />
-                  <RouteComponent
-                    originLat={originLat}
-                    originLng={originLng}
-                    destinationLat={destinationLat}
-                    destinationLng={destinationLng}
-                  />
-                </>
-                :
+              <GeocoderControl
+                mapboxAccessToken={mapboxToken}
+                placeholder="Origin"
+                position="top-left"
+                onPick={handleOriginPick}
+                onClear={handleOriginClear}
+              />
+              <GeocoderControl
+                mapboxAccessToken={mapboxToken}
+                placeholder="Destination"
+                position="top-left"
+                onPick={handleDestinationPick}
+                onClear={handleDestinationClear}
+                center={[destinationLng, destinationLat]}
+              />
+              <RouteComponent
+                originLat={originLat}
+                originLng={originLng}
+                destinationLat={destinationLat}
+                destinationLng={destinationLng}
+                setIsDataLoading={setIsDataLoading}
+              />
+              {isDataLoading ?
                 <div>
                   <SpinnerLoading />
                 </div>
+                :
+                <></>
               }
             </Map>
           </div>
