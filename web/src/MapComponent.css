@@ -1,25 +1,43 @@
-.map-wrapper {
-  width: min(70vw, 1400px);   /* never exceed 70% of screen width */
-  margin: 0 auto;             /* center it */
-}
-
-.map-viewport {
+/* Map card gets an intrinsic height without taking the whole screen */
+.map-card .map-viewport {
   position: relative;
   width: 100%;
-  height: clamp(320px, 70vh, 900px); /* responsive height with sane bounds */
+  /* Prefer aspect-ratio; fallback to min-height for older browsers */
+  aspect-ratio: 4 / 3;
+  min-height: 320px;
 }
 
-.mapbox-canvas {
-  border-radius: 12px;        /* nicer edges */
+/* On taller/wider screens, allow a bit more height but still card-like */
+@media (min-width: 768px) {
+  .map-card .map-viewport {
+    aspect-ratio: 16 / 10;  /* a little wider on desktop */
+    min-height: 380px;
+  }
 }
 
-/* Give the first control in the top-left container a higher z-index
-   so its dropdown appears over the second control.
-*/
-.mapboxgl-ctrl-top-left .mapboxgl-ctrl:nth-child(1) {
-  z-index: 2;
+/* Ensure Mapbox canvas fills the viewport box */
+.map-card .map-viewport > #map {
+  width: 100%;
+  height: 100%;
 }
 
-.mapboxgl-ctrl-top-left .mapboxgl-ctrl:nth-child(2) {
-  z-index: 1;
+/* Keep geocoder inputs above the map layers and tappable */
+.mapboxgl-ctrl-top-left,
+.mapboxgl-ctrl-top-right {
+  z-index: 10;
+}
+
+/* On small screens, stack the two geocoders to avoid click conflicts */
+@media (max-width: 575.98px) {
+  .mapboxgl-ctrl-top-left .mapboxgl-ctrl-geocoder,
+  .mapboxgl-ctrl-top-right .mapboxgl-ctrl-geocoder {
+    width: 100%;
+    max-width: none;
+    margin: 0.25rem 0.5rem;
+  }
+}
+
+/* Shrink the geocoder inputs a bit */
+.mapboxgl-ctrl-geocoder {
+  font-size: 0.95rem;
 }
