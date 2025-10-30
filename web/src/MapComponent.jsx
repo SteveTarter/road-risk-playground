@@ -2,20 +2,14 @@ import Map from "react-map-gl/mapbox";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SpinnerLoading } from "./Utils/SpinnerLoading"
 import { Card } from "react-bootstrap";
-import GeocoderControl from "./GeocoderControl"
-import "./MapComponent.css"
 import RouteComponent from "./RouteComponent";
+import "./MapComponent.css"
 
-export default function MapComponent({ onSelect }) {
+export default function MapComponent({ origin, destination, travelDateTime }) {
   const mapRef = useRef(null);
   const containerRef = useRef(null);
 
   const [isDataLoading, setIsDataLoading] = useState(false);
-
-  const [originLat, setOriginLat] = useState(null);
-  const [originLng, setOriginLng] = useState(null);
-  const [destinationLat, setDestinationLat] = useState(null);
-  const [destinationLng, setDestinationLng] = useState(null);
 
   const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN;
 
@@ -52,11 +46,11 @@ export default function MapComponent({ onSelect }) {
       return;
     }
 
-    if (originLat && originLng && destinationLat && destinationLng) {
-      var xMin = originLat < destinationLat ? originLat : destinationLat;
-      var xMax = originLat > destinationLat ? originLat : destinationLat;
-      var yMin = originLng < destinationLng ? originLng : destinationLng;
-      var yMax = originLng > destinationLng ? originLng : destinationLng;
+    if (origin && destination) {
+      var xMin = origin.lat < destination.lat ? origin.lat : destination.lat;
+      var xMax = origin.lat > destination.lat ? origin.lat : destination.lat;
+      var yMin = origin.lng < destination.lng ? origin.lng : destination.lng;
+      var yMax = origin.lng > destination.lng ? origin.lng : destination.lng;
 
       map.fitBounds([
         [yMin, xMin],
@@ -66,46 +60,32 @@ export default function MapComponent({ onSelect }) {
         padding: {top: 35, bottom:35, left: 35, right: 35}
       })
     }
-    else if (originLat && originLng) {
+    else if (origin) {
        map.flyTo({
-        center: [originLng, originLat],
+        center: [origin.lng, origin.lat],
         zoom: 15
       })
     }
-    else if (destinationLat && destinationLng) {
+    else if (destination) {
       map.flyTo({
-        center: [destinationLng, destinationLat],
+        center: [destination.lng, destination.lat],
         zoom: 15
       })
     }
-  }, [mapRef, originLat, originLng, destinationLat, destinationLng]);
-
-  const handleOriginPick = useCallback(({ lng, lat }) => {
-    setOriginLat(lat);
-    setOriginLng(lng);
-  }, [setOriginLat, setOriginLng]);
-
-  const handleOriginClear = useCallback(() => {
-    setOriginLat(null);
-    setOriginLng(null);
-  }, [setOriginLat, setOriginLng]);
-
-  const handleDestinationPick = useCallback(({ lng, lat }) => {
-    setDestinationLat(lat);
-    setDestinationLng(lng);
-  }, [setDestinationLat, setDestinationLng]);
-
-  const handleDestinationClear = useCallback(() => {
-    setDestinationLat(null);
-    setDestinationLng(null);
-  }, [setDestinationLat, setDestinationLng]);
+  }, [mapRef, origin, destination]);
 
   return (
     <Card className="mb-3 map-card">
-      <Card.Header as="h6" className="d-flex justify-content-between align-items-center">
-        <span>Map</span>
+      <Card.Header as="h6">
+        Map
+        {travelDateTime ? (
+          <span className="text-muted ms-2" style={{ fontSize: "0.85em" }}>
+            {travelDateTime}&nbsp;·&nbsp;
+          </span>
+        ) : 'Time not set · '
+        }
         <small className="text-muted">
-          {originLat && originLng ? "Origin set" : "Origin not set"} · {destinationLat && destinationLng ? "Destination set" : "Destination not set"}
+          {origin ? "Origin set" : "Origin not set"} · {destination ? "Destination set" : "Destination not set"}
         </small>
       </Card.Header>
       <Card.Body>
@@ -125,27 +105,10 @@ export default function MapComponent({ onSelect }) {
             onZoom={onZoom}
             style={{ width: "100%", height: "100%" }}
           >
-            {/* On small screens these stack; on md+ they sit on opposite corners */}
-            <GeocoderControl
-              mapboxAccessToken={mapboxToken}
-              placeholder="Origin"
-              position="top-left"
-              onPick={handleOriginPick}
-              onClear={handleOriginClear}
-            />
-            <GeocoderControl
-              mapboxAccessToken={mapboxToken}
-              placeholder="Destination"
-              position="top-left"
-              onPick={handleDestinationPick}
-              onClear={handleDestinationClear}
-              center={[destinationLng, destinationLat]}
-            />
             <RouteComponent
-              originLat={originLat}
-              originLng={originLng}
-              destinationLat={destinationLat}
-              destinationLng={destinationLng}
+              origin={origin}
+              destination={destination}
+              travelDateTime={travelDateTime}
               setIsDataLoading={setIsDataLoading}
             />
             {isDataLoading ?

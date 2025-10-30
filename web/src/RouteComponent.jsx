@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react";
 import { Layer, Marker, Source} from 'react-map-gl/mapbox';
 
-export default function RouteComponent(props) {
-
-  const [originLat, setOriginLat] = useState(null);
-  const [originLng, setOriginLng] = useState(null);
-  const [destinationLat, setDestinationLat] = useState(null);
-  const [destinationLng, setDestinationLng] = useState(null);
+export default function RouteComponent({ origin, destination, travelDateTime, setIsDataLoading }) {
 
   const [routeData, setRouteData] = useState(null);
 // eslint-disable-next-line
@@ -17,49 +12,35 @@ export default function RouteComponent(props) {
   const [originMarker, setOriginMarker] = useState(null);
   const [destinationMarker, setDestinationMarker] = useState(null);
 
-  if (props?.originLat !== originLat) {
-    setOriginLat(props?.originLat);
-  }
-  if (props?.originLng !== originLng) {
-    setOriginLng(props?.originLng);
-  }
-    if (props?.destinationLat !== destinationLat) {
-    setDestinationLat(props?.destinationLat);
-  }
-  if (props?.destinationLng !== destinationLng) {
-    setDestinationLng(props?.destinationLng);
-  }
-  var setIsDataLoading = props.setIsDataLoading;
-
   useEffect(() => {
-    if (!originLat || !originLng) {
+    if (!origin) {
       setOriginMarker(null);
       setModelInputs(null);
       setRouteData(null);
       setPrediction(null);
     } else {
       setOriginMarker(
-        <Marker longitude={originLng} latitude={originLat} />
+        <Marker longitude={origin.lng} latitude={origin.lat} />
       )
     }
-  }, [originLat, originLng]);
+  }, [origin]);
 
   useEffect(() => {
-    if (!destinationLat || !destinationLng) {
+    if (!destination) {
       setDestinationMarker(null);
       setModelInputs(null);
       setRouteData(null);
       setPrediction(null);
     } else {
       setDestinationMarker(
-        <Marker longitude={destinationLng} latitude={destinationLat} />
+        <Marker longitude={destination.lng} latitude={destination.lat} />
       )
     }
-  }, [destinationLat, destinationLng]);
+  }, [destination]);
 
   useEffect(() => {
     async function fetchData() {
-      if(!originLat || !originLng || !destinationLat || !destinationLng) {
+      if(!origin || !destination) {
         return;
       }
 
@@ -67,17 +48,13 @@ export default function RouteComponent(props) {
       // This keeps the old route from appearing while the query runs.
       setRouteData(null);
 
-      // Get current time in ISO format to pass to the ML model.
-      const isoCurrentTime = new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000))
-                      .toISOString()
-                      .slice(0, 19);
 
       const formattedData = {
-        "o_lat": originLat,
-        "o_lng": originLng,
-        "d_lat": destinationLat,
-        "d_lng": destinationLng,
-        "date_str": isoCurrentTime
+        "o_lat": origin.lat,
+        "o_lng": origin.lng,
+        "d_lat": destination.lat,
+        "d_lng": destination.lng,
+        "date_str": travelDateTime
       }
 
       setIsDataLoading(true);
@@ -108,9 +85,9 @@ export default function RouteComponent(props) {
       setIsDataLoading(false);
     }
     fetchData();
-  }, [originLat, originLng, destinationLat, destinationLng, setIsDataLoading]);
+  }, [origin, destination, travelDateTime, setIsDataLoading]);
 
-  const lineStyle: LineLayer = {
+  const lineStyle = {
     id: 'line',
     type: 'line',
     layout: {
