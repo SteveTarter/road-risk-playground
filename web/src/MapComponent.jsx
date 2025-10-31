@@ -5,7 +5,7 @@ import { Card } from "react-bootstrap";
 import RouteComponent from "./RouteComponent";
 import "./MapComponent.css"
 
-export default function MapComponent({ origin, destination, travelDateTime }) {
+export default function MapComponent({ origin, destination, travelDateTime, setPrediction, setModelInputs }) {
   const mapRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -115,6 +115,8 @@ export default function MapComponent({ origin, destination, travelDateTime }) {
               destination={destination}
               travelDateTime={travelDateTime}
               setIsDataLoading={setIsDataLoading}
+              setModelInputs={setModelInputs}
+              setPrediction={setPrediction}
             />
             {isDataLoading ?
               <div>

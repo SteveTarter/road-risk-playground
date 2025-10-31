@@ -1,13 +1,9 @@
 import { useEffect, useState } from "react";
 import { Layer, Marker, Source} from 'react-map-gl/mapbox';
 
-export default function RouteComponent({ origin, destination, travelDateTime, setIsDataLoading }) {
+export default function RouteComponent({ origin, destination, travelDateTime, setIsDataLoading, setModelInputs, setPrediction }) {
 
   const [routeData, setRouteData] = useState(null);
-// eslint-disable-next-line
-  const [modelInputs, setModelInputs] = useState(null);
-// eslint-disable-next-line
-  const [prediction, setPrediction] = useState(null);
 
   const [originMarker, setOriginMarker] = useState(null);
   const [destinationMarker, setDestinationMarker] = useState(null);
@@ -23,7 +19,7 @@ export default function RouteComponent({ origin, destination, travelDateTime, se
         <Marker longitude={origin.lng} latitude={origin.lat} />
       )
     }
-  }, [origin]);
+  }, [origin, setModelInputs, setPrediction]);
 
   useEffect(() => {
     if (!destination) {
@@ -36,7 +32,7 @@ export default function RouteComponent({ origin, destination, travelDateTime, se
         <Marker longitude={destination.lng} latitude={destination.lat} />
       )
     }
-  }, [destination]);
+  }, [destination, setModelInputs, setPrediction]);
 
   useEffect(() => {
     async function fetchData() {
@@ -85,7 +81,7 @@ export default function RouteComponent({ origin, destination, travelDateTime, se
       setIsDataLoading(false);
     }
     fetchData();
-  }, [origin, destination, travelDateTime, setIsDataLoading]);
+  }, [origin, destination, travelDateTime, setIsDataLoading, setModelInputs, setPrediction]);
 
   const lineStyle = {
     id: 'line',

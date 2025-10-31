@@ -4,6 +4,7 @@ import RoadRiskPlayground from "./RoadRiskPlayground";
 import InfoPanel from "./InfoPanel";
 import MapComponent from "./MapComponent";
 import ControlsCard from "./ControlsCard";
+import ResultsCard from "./ResultsCard";
 import Container from "react-bootstrap/Container"
 import Row from "react-bootstrap/Row"
 import Col from "react-bootstrap/Col"
@@ -16,6 +17,9 @@ function App() {
   const [origin, setOrigin] = useState(null);         // {lng, lat, label}
   const [destination, setDestination] = useState(null); // {lng, lat, label}
   const [travelDateTimeText, setTravelDateTimeText] = useState(""); // MUST BE in 'YYY-MM-DDTHH:mm:ss' format
+
+  const [modelInputs, setModelInputs] = useState(null);
+  const [prediction, setPrediction] = useState(null);
 
   const selectActiveSelection = (section) => {
     setActiveSection(prev => (prev === section ? '' : section));
@@ -52,6 +56,8 @@ function App() {
               origin={origin}
               destination={destination}
               travelDateTime={travelDateTimeText}
+              setModelInputs = {setModelInputs}
+              setPrediction = {setPrediction}
             />
           </Col>
 
@@ -65,6 +71,10 @@ function App() {
               onDestinationChange={setDestination}
               travelDateTimeText={travelDateTimeText}
               setTravelDateTimeText={setTravelDateTimeText}
+            />
+            <ResultsCard
+              prediction={prediction}
+              modelInputs={modelInputs}
             />
             <InfoPanel activeSection={activeSection} />
           </Col>
