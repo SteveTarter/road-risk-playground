@@ -1,7 +1,7 @@
 PIPE := infra/pipeline
 
 build:
-	cd web && npm ci && npm run build
+	cd web && NODE_ENV=production && npm ci && npm run build
 
 deploy: build
 	BUCKET=$$(cd $(PIPE) && terraform output -raw site_bucket_name); \

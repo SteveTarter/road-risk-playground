@@ -21,7 +21,6 @@ ALLOWED_ORIGINS = [
     "https://road-risk-playground.tarterware.com"
 ]
 
-
 # Return the CRS for Universal Transverse Mercater (UTM) Coordinate Reference System for the latitude 
 # and longitude given.  UTM coordinate systems don't distort due to latitude
 def get_utm_crs(lat: float, lng: float) -> str:
@@ -43,7 +42,6 @@ def get_utm_crs(lat: float, lng: float) -> str:
     crs = crs + " +datum=WGS84 +units=m +no_defs"
 
     return crs
-
 
 # Next, define a function to get the directions between two points from Mapbox, and return the raw response as well as a GeoPandas representation of the route.
 def read_mapbox_directions(o_lat: float, o_lng: float, d_lat: float, d_lng: float) -> tuple[dict, gpd.GeoDataFrame]:
@@ -572,39 +570,65 @@ def drive_risk_query():
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=9400, debug=False)
 
-def lambda_handler(event, context):
-    # Grab the Origin header (case‑insensitive)
-    headers = event.get("headers") or {}
-    origin = headers.get("Origin") or headers.get("origin", "")
-    
-    # Decide which origin to return
-    acao = origin if origin in ALLOWED_ORIGINS else ALLOWED_ORIGINS[0]
+# A few helpers for the lambda_handler
+def _origin(headers):
+    if not headers:
+        return ""
+    h = {k.lower(): v for k,v in headers.items()}
 
-    # Common CORS headers
-    cors_headers = {
+    return h.get("origin", "")
+
+def _cors(origin):
+    acao = origin if "*" not in ALLOWED_ORIGINS and origin in ALLOWED_ORIGINS else (origin or "*")
+    return {
         "Access-Control-Allow-Origin": acao,
         "Access-Control-Allow-Headers": "Content-Type,Authorization",
-        "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
+        "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
     }
 
-    if event["httpMethod"] == "OPTIONS":
+def _method(event):
+    # HTTP API v2 / Function URL
+    rc = event.get("requestContext") or {}
+    http = rc.get("http") or {}
+    if "method" in http:
+        return http["method"].upper()
+
+    # REST API v1
+    return (event.get("httpMethod") or "").upper()
+
+def lambda_handler(event, context):
+    headers = event.get("headers") or {}
+    cors = _cors(_origin(headers))
+    method = _method(event)
+
+    # CORS preflight: no body present
+    if method == "OPTIONS":
         return {
-            "statusCode": 200,
-            'headers': {
-                **cors_headers,
-                'Content-Type': 'application/json'
-            },
-            "body": json.dumps({"message": "CORS preflight OK"})
+            "statusCode": 204,
+            "headers": {**cors, "Content-Length": "0"},
+            "body": "",
         }
 
     try:
+        raw = event.get("body")
+        if raw is None:
+            # Support GET ?o_lat=... for debugging
+            qs = event.get("queryStringParameters") or {}
+            if not qs:
+                raise ValueError("No request body or query params")
+            body = qs
+        else:
+            if event.get("isBase64Encoded"):
+                import base64
+                raw = base64.b64decode(raw).decode("utf-8")
+            body = json.loads(raw)
         # Get the request payload from the request body
         body = json.loads(event["body"])
 
-        o_lat = body["o_lat"]
-        o_lng = body["o_lng"]
-        d_lat = body["d_lat"]
-        d_lng = body["d_lng"]
+        o_lat = float(body["o_lat"])
+        o_lng = float(body["o_lng"])
+        d_lat = float(body["d_lat"])
+        d_lng = float(body["d_lng"])
         date_str = body["date_str"]
 
         response = calc_drive_risk(o_lat, o_lng, d_lat, d_lng, date_str)
@@ -618,12 +642,13 @@ def lambda_handler(event, context):
         }
 
     except Exception as e:
-        print(traceback.format_exc())
+        err = traceback.format_exc()
+        print(err)
         return {
             "statusCode": 500,
             "headers": {
                 'Content-Type': 'application/json'
             },
-            "body": traceback.format_exc()
+            "body": err
         }
 
