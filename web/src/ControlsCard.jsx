@@ -1,6 +1,8 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Card, Form, Button, InputGroup } from "react-bootstrap";
 import { SearchBox } from "@mapbox/search-js-react";
+import DateTime from 'react-datetime';
+import 'react-datetime/css/react-datetime.css';
 
 const MAPBOX_TOKEN =
   process.env.REACT_APP_MAPBOX_TOKEN || process.env.MAPBOX_TOKEN;
@@ -24,44 +26,67 @@ function unwrapFeature(payload) {
   return null;
 }
 
-function toPointFromFeature(feature) {
-  const lng = feature.geometry.coordinates[0];
-  const lat = feature.geometry.coordinates[1];
-  if (!Number.isFinite(lng) || !Number.isFinite(lat)) {
-    return null;
-  }
-
-  return { lng, lat };
-}
-
 export default function ControlsCard({
   origin,
   destination,
   onOriginChange,
   onDestinationChange,
-  travelDateTime,
-  onTravelDateTimeChange,
+  travelDateTimeText,
+  setTravelDateTimeText,
 }) {
   // Local text for the visible inputs (controlled UI)
   const [originText, setOriginText] = useState(origin?.label || "");
   const [destText, setDestText] = useState(destination?.label || "");
+  const [initialViewDate, setInitialViewDate] = useState(null);
+
+  useEffect((res) => {
+    if (!res || !res._d) {
+      return;
+    }
+
+    const newDateTime = new Date(res._d);
+    const newDateTimeStr = newDateTime.toISOString().slice(0,19)
+    console.log("newDateTimeStr", newDateTimeStr);
+    setTravelDateTimeText(newDateTimeStr);
+    if (!travelDateTimeText) {
+      return;
+    }
+
+    if (initialViewDate) {
+      return;
+    }
+
+    console.log("Converting travelDateTimeText: ", travelDateTimeText);
+    const newDt = new Date(travelDateTimeText);
+    setInitialViewDate(newDt);
+  },[travelDateTimeText, initialViewDate, setInitialViewDate, setTravelDateTimeText]);
 
   // When SearchBox returns a full feature (enter or click)
   const applySelection = useCallback((payload, setter, textSetter) => {
-    const f = unwrapFeature(payload);
-    if (!f) {
+    const feature = unwrapFeature(payload);
+    if (!feature) {
       return;
     }
-    const pt = toPointFromFeature(f);
-    const label = f?.place_name || f?.properties?.name || "";
-    if (textSetter) {
-      textSetter(label || "");
-    }
-    if (!pt) {
-      return; // ignore invalid selections
+
+    const lat = feature.geometry.coordinates[1];
+    const lng = feature.geometry.coordinates[0];
+    const label = feature?.place_name || feature?.properties?.name || "";
+
+    // Blur immediately to avoid focused descendant inside aria-hidden container
+    // (SearchBox closes the results by toggling aria-hidden on it)
+    if (typeof window !== "undefined") {
+      const el = document.activeElement;
+      // microtask: let SearchBox handle its own selection first
+      Promise.resolve().then(() => {
+        if (el && typeof el.blur === "function") el.blur();
+      });
     }
 
-    setter({ ...pt, label });
+    // Update visible text AFTER blur (another microtask), then commit coords
+    Promise.resolve().then(() => {
+      textSetter?.(label || "");
+      setter({ lng, lat, label });
+    });
   }, []);
 
   const handleOriginRetrieve = useCallback((res) =>
@@ -91,6 +116,17 @@ export default function ControlsCard({
     onDestinationChange(null);
     setDestText("");
   };
+
+  const handleDateTimeChange = (res) => {
+    console.log("dateTime", res._d);
+
+    const newDateTime = new Date(res._d);
+    const newDateTimeStr = newDateTime.toISOString().slice(0,19)
+    console.log("newDateTimeStr", newDateTimeStr);
+    setTravelDateTimeText(newDateTimeStr);
+  };
+
+  const showDateTimeChooser = false;
 
   return (
     <Card className="mb-3">
@@ -141,21 +177,18 @@ export default function ControlsCard({
             </Button>
           </InputGroup>
 
-          <Form.Label className="mt-3 mb-1">Date & Time of Travel</Form.Label>
-          <Form.Control
-            type="datetime-local"
-            onChange={(e) => {
-              // interpret as local time; store ISO string
-              const v = e.target.value; // "YYYY-MM-DDTHH:mm"
-              onTravelDateTimeChange(v);
-            }}
-          />
+          { showDateTimeChooser &&
+            <div className="form-group">
+              <label htmlFor="dateTimePicker">Select Date and Time:</label>
+              <DateTime
+                onChange={handleDateTimeChange}
+                inputProps={{ placeholder: travelDateTimeText }}
+                dateFormat="YYYY-MM-DD"
+                timeFormat="HH:mm:ss"
+              />
+            </div>
+          }
         </Form>
-
-        <div className="small text-muted">
-          {origin ? `Origin: ${origin.label}` : "Origin not set"} ·{" "}
-          {destination ? `Destination: ${destination.label}` : "Destination not set"}
-        </div>
       </Card.Body>
     </Card>
   );

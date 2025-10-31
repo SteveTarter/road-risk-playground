@@ -19,6 +19,7 @@
     "mapbox-gl": "^3.16.0",
     "react": "^18.0.0",
     "react-bootstrap": "^2.10.10",
+    "react-datetime": "^3.3.1",
     "react-dom": "^18.0.0",
     "react-map-gl": "^8.1.0",
     "react-scripts": "5.0.1",

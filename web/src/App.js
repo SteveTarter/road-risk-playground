@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import NavBar from "./NavBar"
 import RoadRiskPlayground from "./RoadRiskPlayground";
 import InfoPanel from "./InfoPanel";
@@ -15,16 +15,31 @@ function App() {
 
   const [origin, setOrigin] = useState(null);         // {lng, lat, label}
   const [destination, setDestination] = useState(null); // {lng, lat, label}
-  const [travelDateTime, setTravelDateTime] = useState(null); // MUST BE in 'YYY-MM-DDTHH:mm:ss' format
+  const [travelDateTimeText, setTravelDateTimeText] = useState(""); // MUST BE in 'YYY-MM-DDTHH:mm:ss' format
 
   const selectActiveSelection = (section) => {
     setActiveSection(prev => (prev === section ? '' : section));
   }
 
-  // Set travelDateTime if it hasn't been set yet
-  if(!travelDateTime) {
-    new setTravelDateTime(new Date().toISOString());
-  }
+  // Set travelDateTime to current time if it hasn't been set yet
+  useEffect(() => {
+    if (travelDateTimeText.length > 0) {
+      return
+    }
+
+    // Initialize to now in UTC timezone
+    const msTravelTime = new Date().getTime();
+
+    // Determine offset by multiplying minutes offset by 60 seconds and 1000 milliseconds
+    const msPerMinute = 60 * 1000;
+    const msTimezoneOffset = new Date().getTimezoneOffset() * msPerMinute;
+    const localDateTime = new Date(msTravelTime - msTimezoneOffset);
+
+    // Set to string in 'YYY-MM-DDTHH:mm:ss' format
+    var nowLocalDateTimeString = localDateTime.toISOString().slice(0,19)
+    nowLocalDateTimeString = nowLocalDateTimeString.slice(0,19)
+    setTravelDateTimeText(nowLocalDateTimeString);
+  }, [travelDateTimeText, setTravelDateTimeText]);
 
   return (
     <>
@@ -36,7 +51,7 @@ function App() {
             <MapComponent
               origin={origin}
               destination={destination}
-              travelDateTime={travelDateTime}
+              travelDateTime={travelDateTimeText}
             />
           </Col>
 
@@ -48,8 +63,8 @@ function App() {
               destination={destination}
               onOriginChange={setOrigin}
               onDestinationChange={setDestination}
-              travelDateTime={travelDateTime}
-              onTravelDateTimeChange={setTravelDateTime}
+              travelDateTimeText={travelDateTimeText}
+              setTravelDateTimeText={setTravelDateTimeText}
             />
             <InfoPanel activeSection={activeSection} />
           </Col>
