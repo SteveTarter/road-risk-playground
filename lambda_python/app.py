@@ -10,8 +10,16 @@ import pandas as pd
 import geopandas as gpd
 import lightgbm as lgb
 
+from flask_cors import CORS
 from shapely.geometry import shape
 from flask import Flask, render_template_string, url_for, send_file, abort, request, jsonify, Response
+
+# Whitelisted CORS origins
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://road-risk-playground.tarterware.info:3000",
+    "https://road-risk-playground.tarterware.com"
+]
 
 # Return the CRS for Universal Transverse Mercater (UTM) Coordinate Reference System for the latitude 
 # and longitude given.  UTM coordinate systems don't distort due to latitude
@@ -34,7 +42,6 @@ def get_utm_crs(lat: float, lng: float) -> str:
     crs = crs + " +datum=WGS84 +units=m +no_defs"
 
     return crs
-
 
 # Next, define a function to get the directions between two points from Mapbox, and return the raw response as well as a GeoPandas representation of the route.
 def read_mapbox_directions(o_lat: float, o_lng: float, d_lat: float, d_lng: float) -> tuple[dict, gpd.GeoDataFrame]:
@@ -458,6 +465,9 @@ def _init():
 ### Start the application ###
 app = Flask(__name__)
 
+# Initialize CORS, passing in allowed origins
+CORS(app, origins=ALLOWED_ORIGINS)
+
 def calc_drive_risk(o_lat: float, o_lng: float, d_lat: float, d_lng: float, date_str: str):
 
     # Load the model
@@ -526,7 +536,7 @@ def calc_drive_risk(o_lat: float, o_lng: float, d_lat: float, d_lng: float, date
 def drive_risk_query():
     if request.method == "POST":
         if not request.is_json:
-            return jsonify(error="Content-Type must be application/json"), 415
+            return jsonify(error="Content-Type must be application/json"), 400
 
         payload = request.get_json(silent=False)
 
@@ -554,25 +564,71 @@ def drive_risk_query():
             return jsonify(error="Missing one or more required query parameters"), 400
 
     result = calc_drive_risk(o_lat, o_lng, d_lat, d_lng, date_str)
-    # If calc_drive_risk already returns a Flask Response, return it directly.
-    # Otherwise, jsonify the dict.
-    # return (result if hasattr(result, "response") else jsonify(result), 200)
-    return result
+
+    return jsonify(result), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=9400, debug=False)
 
+# A few helpers for the lambda_handler
+def _origin(headers):
+    if not headers:
+        return ""
+    h = {k.lower(): v for k,v in headers.items()}
+
+    return h.get("origin", "")
+
+def _cors(origin):
+    acao = origin if "*" not in ALLOWED_ORIGINS and origin in ALLOWED_ORIGINS else (origin or "*")
+    return {
+        "Access-Control-Allow-Origin": acao,
+        "Access-Control-Allow-Headers": "Content-Type,Authorization",
+        "Access-Control-Allow-Methods": "OPTIONS,POST,GET",
+    }
+
+def _method(event):
+    # HTTP API v2 / Function URL
+    rc = event.get("requestContext") or {}
+    http = rc.get("http") or {}
+    if "method" in http:
+        return http["method"].upper()
+
+    # REST API v1
+    return (event.get("httpMethod") or "").upper()
+
 def lambda_handler(event, context):
-    # Grab the Origin header (case‑insensitive)
     headers = event.get("headers") or {}
+    cors = _cors(_origin(headers))
+    method = _method(event)
+
+    # CORS preflight: no body present
+    if method == "OPTIONS":
+        return {
+            "statusCode": 204,
+            "headers": {**cors, "Content-Length": "0"},
+            "body": "",
+        }
+
     try:
+        raw = event.get("body")
+        if raw is None:
+            # Support GET ?o_lat=... for debugging
+            qs = event.get("queryStringParameters") or {}
+            if not qs:
+                raise ValueError("No request body or query params")
+            body = qs
+        else:
+            if event.get("isBase64Encoded"):
+                import base64
+                raw = base64.b64decode(raw).decode("utf-8")
+            body = json.loads(raw)
         # Get the request payload from the request body
         body = json.loads(event["body"])
 
-        o_lat = body["o_lat"]
-        o_lng = body["o_lng"]
-        d_lat = body["d_lat"]
-        d_lng = body["d_lng"]
+        o_lat = float(body["o_lat"])
+        o_lng = float(body["o_lng"])
+        d_lat = float(body["d_lat"])
+        d_lng = float(body["d_lng"])
         date_str = body["date_str"]
 
         response = calc_drive_risk(o_lat, o_lng, d_lat, d_lng, date_str)
@@ -586,12 +642,13 @@ def lambda_handler(event, context):
         }
 
     except Exception as e:
-        print(traceback.format_exc())
+        err = traceback.format_exc()
+        print(err)
         return {
             "statusCode": 500,
             "headers": {
                 'Content-Type': 'application/json'
             },
-            "body": traceback.format_exc()
+            "body": err
         }
 
