@@ -1,21 +1,27 @@
 # Infrastructure
 
-This section of the repo contains the Terraform configuration files to deploy the various components of this application on AWS.
+This directory contains the Terraform configuration used to deploy the Road Risk Playground application on AWS.
+It provisions the static website, backend API, and supporting resources in a reproducible way.
 
 ## Prerequisites
+You’ll need an AWS account with the following already configured:
+* **Route 53 hosted zone** for your domain (e.g. tarterware.com)
+* **ACM certificate** in the same region that covers both the root domain and one wildcard subdomain (e.g. tarterware.com and *.tarterware.com)
 
-Since this will be deploying to Amazon Web Services, you must have an AWS account.  Within this account, you also need:
+You must also push the backend Lambda container image to Amazon ECR before running Terraform.
+Terraform references that image by URL—if it doesn’t exist, deployment will fail.
 
-* a hosted zoned in Route 53 that points to your website (e.g. tarterware.com)
-* a certificate in AWS Certificate Manager that corresponds to the site above, with one wildcard subdomain defined (e.g. tarterware.com, *.tarterware.com)
-
-Before running terraform, you also need to run the deployment script for the lambda endpoint image to the Elastic Container Registry.  If the image isn't present, terraform will not be able to complete installation.
-
-## Create Variables file
-
-You need to create a terraform variables file to point to the resources within your account.  Below is an example:
-
+## Build and Push the Lambda Image
+From the root of the repository:
 ```bash
+cd lambda_python
+bash deploy.sh
+```
+
+## Create a Terraform Variables file
+Create a file such as prod.tfvars that points Terraform to the correct AWS resources:
+
+```hd
 aws_region          = "<YOUR_REGION>"
 domain_name         = "<YOUR_DOMAIN>"
 subdomain           = "road-risk-playground"
@@ -33,27 +39,35 @@ tags = {
   env = "prod"
 }
 
-ml_model_storage   = "ml-road-risk-playground"
-ml_model_prefix    = "models/road-risk-playground/0.1.0/"
 image_url          = "<AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/road-risk-playground:latest"
 
 mapbox_token       = "<MAPBOX_TOKEN>"
 ```
 
-## Installation
-
-Run the following commands:
+## Deployment
+From the infra/pipeline directory:
 
 ```bash
-cd pipeline
+cd infra/pipeline
 terraform init -upgrade
 terraform plan -var-file=prod.tfvars
 terraform apply -var-file=prod.tfvars
 ```
+Terraform will:
+* Create or update the S3 bucket for the static React build
+* Configure a CloudFront distribution with HTTPS and your chosen domain
+* Deploy the Lambda container and API Gateway endpoint
+* Wire all components together via IAM roles and environment variables
+Once complete, the output will display the CloudFront URL and S3 bucket name.
 
-## Uninstall
+## Updating the Front End
+After Terraform completes, from the root of the repository:
+```bash
+make deploy
+```
 
-Run the following command:
+## Teardown
+To remove all deployed resources:
 
 ```bash
 terraform destroy -var-file=prod.tfvars
