@@ -19,7 +19,8 @@ export default function MapComponent({ origin, destination, travelDateTime, setP
 
   const onLoad = useCallback(() => {
     setIsDataLoading(false);
-    setDebug(process.env.REACT_APP_DEBUG)
+    const debugStr = process.env.REACT_APP_DEBUG.toLowerCase();
+    setDebug(debugStr === "true");
   }, []);
 
   const onZoom = useCallback((viewState) => {
