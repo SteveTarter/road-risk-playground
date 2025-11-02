@@ -17,6 +17,8 @@ export default function MapComponent({ origin, destination, travelDateTime, setP
   const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
   const mapStyle = MAP_STYLE_STREET;
 
+  const mapComponentRef = useRef(null);
+
   const onLoad = useCallback(() => {
     setIsDataLoading(false);
     const debugStr = process.env.REACT_APP_DEBUG.toLowerCase();
@@ -78,57 +80,60 @@ export default function MapComponent({ origin, destination, travelDateTime, setP
   }, [mapRef, origin, destination]);
 
   return (
-    <Card className="mb-3 map-card">
-      <Card.Header as="h6">
-        Map
-        {debug &&
-          <>
-            <small className="text-muted">
-              <span>&nbsp;·&nbsp;Debug Mode&nbsp;·&nbsp;</span>
-              {travelDateTime ? (
-                <span>{travelDateTime}&nbsp;·&nbsp;</span>
-                ) : 'Time not set · '
+    <div ref={mapComponentRef}>
+      <Card className="mb-3 map-card">
+        <Card.Header as="h6">
+          Map
+          {debug &&
+            <>
+              <small className="text-muted">
+                <span>&nbsp;·&nbsp;Debug Mode&nbsp;·&nbsp;</span>
+                {travelDateTime ? (
+                  <span>{travelDateTime}&nbsp;·&nbsp;</span>
+                  ) : 'Time not set · '
+                }
+                {origin ? "Origin set" : "Origin not set"} · {destination ? "Destination set" : "Destination not set"}
+            </small>
+            </>
+          }
+        </Card.Header>
+        <Card.Body>
+          <div ref={containerRef} className="map-viewport">
+            <Map
+              id="map"
+              ref={mapRef}
+              mapStyle={mapStyle}
+              mapboxAccessToken={mapboxToken}
+              onLoad={() => onLoad()}
+              fog={{}}
+              initialViewState={{
+                longitude: -97.5,
+                latitude: 32.75,
+                zoom: 10,
+              }}
+              onZoom={onZoom}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <RouteComponent
+                origin={origin}
+                destination={destination}
+                travelDateTime={travelDateTime}
+                setIsDataLoading={setIsDataLoading}
+                setModelInputs={setModelInputs}
+                setPrediction={setPrediction}
+                mapComponentRef={mapComponentRef}
+              />
+              {isDataLoading ?
+                <div>
+                  <SpinnerLoading />
+                </div>
+                :
+                <></>
               }
-              {origin ? "Origin set" : "Origin not set"} · {destination ? "Destination set" : "Destination not set"}
-           </small>
-          </>
-        }
-      </Card.Header>
-      <Card.Body>
-        <div ref={containerRef} className="map-viewport">
-          <Map
-            id="map"
-            ref={mapRef}
-            mapStyle={mapStyle}
-            mapboxAccessToken={mapboxToken}
-            onLoad={() => onLoad()}
-            fog={{}}
-            initialViewState={{
-              longitude: -97.5,
-              latitude: 32.75,
-              zoom: 10,
-            }}
-            onZoom={onZoom}
-            style={{ width: "100%", height: "100%" }}
-          >
-            <RouteComponent
-              origin={origin}
-              destination={destination}
-              travelDateTime={travelDateTime}
-              setIsDataLoading={setIsDataLoading}
-              setModelInputs={setModelInputs}
-              setPrediction={setPrediction}
-            />
-            {isDataLoading ?
-              <div>
-                <SpinnerLoading />
-              </div>
-              :
-              <></>
-            }
-          </Map>
-        </div>
-      </Card.Body>
-    </Card>
+            </Map>
+          </div>
+        </Card.Body>
+      </Card>
+    </div>
    )
 }

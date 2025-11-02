@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Layer, Marker, Source} from 'react-map-gl/mapbox';
 
-export default function RouteComponent({ origin, destination, travelDateTime, setIsDataLoading, setModelInputs, setPrediction }) {
+export default function RouteComponent({ origin, destination, travelDateTime, setIsDataLoading, setModelInputs, setPrediction, mapComponentRef }) {
 
   const [routeData, setRouteData] = useState(null);
 
@@ -44,7 +44,6 @@ export default function RouteComponent({ origin, destination, travelDateTime, se
       // This keeps the old route from appearing while the query runs.
       setRouteData(null);
 
-
       const formattedData = {
         "o_lat": origin.lat,
         "o_lng": origin.lng,
@@ -54,6 +53,7 @@ export default function RouteComponent({ origin, destination, travelDateTime, se
       }
 
       setIsDataLoading(true);
+      mapComponentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start'});
       const url = `${process.env.REACT_APP_API_BASE_URL}/drive-risk`;
       try {
         const response = await fetch(url, {
@@ -81,7 +81,7 @@ export default function RouteComponent({ origin, destination, travelDateTime, se
       setIsDataLoading(false);
     }
     fetchData();
-  }, [origin, destination, travelDateTime, setIsDataLoading, setModelInputs, setPrediction]);
+  }, [origin, destination, travelDateTime, setIsDataLoading, setModelInputs, setPrediction, mapComponentRef]);
 
   const lineStyle = {
     id: 'line',
