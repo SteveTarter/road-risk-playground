@@ -50,18 +50,7 @@ function App() {
       <NavBar onSelect={selectActiveSelection} />
       <Container fluid className="py-3 bg-light">
         <Row className="g-3">
-          {/* Map in left column */}
-          <Col xs={12} md={8}>
-            <MapComponent
-              origin={origin}
-              destination={destination}
-              travelDateTime={travelDateTimeText}
-              setModelInputs = {setModelInputs}
-              setPrediction = {setPrediction}
-            />
-          </Col>
-
-          {/* Other cards in the right column */}
+          {/* Other cards in the left column */}
           <Col xs={12} md={4}>
             <RoadRiskPlayground />
             <ControlsCard
@@ -78,6 +67,17 @@ function App() {
             />
             <InfoPanel activeSection={activeSection} />
           </Col>
+          {/* Map in right column */}
+          <Col xs={12} md={8}>
+            <MapComponent
+              origin={origin}
+              destination={destination}
+              travelDateTime={travelDateTimeText}
+              setModelInputs = {setModelInputs}
+              setPrediction = {setPrediction}
+            />
+          </Col>
+
         </Row>
       </Container>
     </>
