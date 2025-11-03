@@ -9,7 +9,7 @@ The project was built in response to the Kaggle Playground competition, [Predict
 You can explore the live demo here:
 https://road-risk-playground.tarterware.com/
 
-![Road Risk Playground screenshot](./Resources/img/RoadRiskPlayground-2025-10-31-1.png)
+![Road Risk Playground screenshot](./Resources/img/RoadRiskPlayground-20251103-1.png)
 
 ## How It Works
 
