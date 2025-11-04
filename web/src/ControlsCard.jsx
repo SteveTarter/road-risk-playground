@@ -33,11 +33,20 @@ export default function ControlsCard({
   onDestinationChange,
   travelDateTimeText,
   setTravelDateTimeText,
+  pickTarget,
+  onStartPick,
+  onCancelPick,
 }) {
   // Local text for the visible inputs (controlled UI)
   const [originText, setOriginText] = useState(origin?.label || "");
   const [destText, setDestText] = useState(destination?.label || "");
   const [initialViewDate, setInitialViewDate] = useState(null);
+
+  const isPickingOrigin = pickTarget === 'origin';
+  const isPickingDest = pickTarget === 'destination';
+
+  // Simple label helper
+  const pickLabel = (active) => (active ? 'Click a point…' : 'Pick on map');
 
   useEffect((res) => {
     if (!res || !res._d) {
@@ -88,6 +97,16 @@ export default function ControlsCard({
       setter({ lng, lat, label });
     });
   }, []);
+
+  useEffect(() => {
+    const next = origin?.label || "";
+    setOriginText((prev) => (prev === next ? prev : next));
+  }, [origin?.label]);
+
+  useEffect(() => {
+    const next = destination?.label || "";
+    setDestText((prev) => (prev === next ? prev : next));
+  }, [destination?.label]);
 
   const handleOriginRetrieve = useCallback((res) =>
     applySelection(res, onOriginChange, setOriginText),
@@ -140,17 +159,20 @@ export default function ControlsCard({
             <SearchBox
               accessToken={MAPBOX_TOKEN}
               value={originText}
-              onChange={(v) =>
-                setOriginText(
-                  typeof v === "string" ? v : (v?.target?.value ?? "")
-                )
-              }
+              onChange={(v) => setOriginText(typeof v === "string" ? v : (v?.target?.value ?? ""))}
               onRetrieve={handleOriginRetrieve}
               onSelect={handleOriginSelect}
               placeholder="Origin address"
               options={SEARCH_OPTS}
               onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
             />
+            <Button
+              variant={isPickingOrigin ? "primary" : "outline-primary"}
+              onClick={() => onStartPick(isPickingOrigin ? null : 'origin')}
+              className="ms-2"
+            >
+              {pickLabel(isPickingOrigin)}
+            </Button>
             <Button variant="outline-secondary" onClick={clearOrigin} disabled={!origin}>
               Clear
             </Button>
@@ -161,17 +183,20 @@ export default function ControlsCard({
             <SearchBox
               accessToken={MAPBOX_TOKEN}
               value={destText}
-              onChange={(v) =>
-                setDestText(
-                  typeof v === "string" ? v : (v?.target?.value ?? "")
-                )
-              }
+              onChange={(v) => setDestText(typeof v === "string" ? v : (v?.target?.value ?? ""))}
               onRetrieve={handleDestRetrieve}
               onSelect={handleDestSelect}
               placeholder="Destination address"
               options={SEARCH_OPTS}
               onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
             />
+            <Button
+              variant={isPickingDest ? "primary" : "outline-primary"}
+              onClick={() => onStartPick(isPickingDest ? null : 'destination')}
+              className="ms-2"
+            >
+              {pickLabel(isPickingDest)}
+            </Button>
             <Button variant="outline-secondary" onClick={clearDestination} disabled={!destination}>
               Clear
             </Button>

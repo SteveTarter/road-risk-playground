@@ -21,6 +21,8 @@ function App() {
   const [modelInputs, setModelInputs] = useState(null);
   const [prediction, setPrediction] = useState(null);
 
+  const [pickTarget, setPickTarget] = useState(null); // 'origin' | 'destination' | null
+
   const selectActiveSelection = (section) => {
     setActiveSection(prev => (prev === section ? '' : section));
   }
@@ -60,6 +62,9 @@ function App() {
               onDestinationChange={setDestination}
               travelDateTimeText={travelDateTimeText}
               setTravelDateTimeText={setTravelDateTimeText}
+              pickTarget={pickTarget}
+              onStartPick={setPickTarget}
+              onCancelPick={() => setPickTarget(null)}
             />
             <ResultsCard
               prediction={prediction}
@@ -72,9 +77,13 @@ function App() {
             <MapComponent
               origin={origin}
               destination={destination}
+              onOriginChange={setOrigin}
+              onDestinationChange={setDestination}
               travelDateTime={travelDateTimeText}
-              setModelInputs = {setModelInputs}
-              setPrediction = {setPrediction}
+              setModelInputs={setModelInputs}
+              setPrediction={setPrediction}
+              pickTarget={pickTarget}
+              onCancelPick={() => setPickTarget(null)}
             />
           </Col>
 

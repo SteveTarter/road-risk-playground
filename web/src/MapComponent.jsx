@@ -5,7 +5,31 @@ import { Card } from "react-bootstrap";
 import RouteComponent from "./RouteComponent";
 import "./MapComponent.css"
 
-export default function MapComponent({ origin, destination, travelDateTime, setPrediction, setModelInputs }) {
+const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN;
+const mapboxApiUrl = process.env.REACT_APP_MAPBOX_API_URL;
+
+async function reverseGeocode(lng, lat) {
+  const url =
+    `${mapboxApiUrl}/geocoding/v5/mapbox.places/${lng},${lat}.json` +
+    `?types=address,place&limit=1&access_token=${encodeURIComponent(mapboxToken)}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Reverse geocode failed: ${res.status}`);
+  const data = await res.json();
+  const f = data?.features?.[0];
+  return f?.place_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+}
+
+export default function MapComponent({
+  origin,
+  destination,
+  onOriginChange,
+  onDestinationChange,
+  travelDateTime,
+  setPrediction,
+  setModelInputs,
+  pickTarget,           // 'origin' | 'destination' | null
+  onCancelPick,         // () => void
+}) {
   const mapRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -13,8 +37,6 @@ export default function MapComponent({ origin, destination, travelDateTime, setP
   const [debug, setDebug] = useState(null);
 
   const [bounds, setBounds] = useState(null);
-
-  const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN;
 
   const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
   const mapStyle = MAP_STYLE_STREET;
@@ -72,6 +94,53 @@ export default function MapComponent({ origin, destination, travelDateTime, setP
       })
     }
   }, [mapRef, origin, destination, bounds]);
+
+  useEffect(() => {
+    const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
+    if (!map) {
+      return;
+    }
+
+    if (!pickTarget) {
+      return; // only attach while picking
+    }
+    map.getCanvas().style.cursor = 'crosshair';
+
+    const handleClick = async (e) => {
+      try {
+        const { lng, lat } = e.lngLat;
+        const label = await reverseGeocode(lng, lat);
+        const point = { lng, lat, label };
+
+        if (pickTarget === 'origin') {
+          onOriginChange(point);
+        } else if (pickTarget === 'destination') {
+          onDestinationChange(point);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        // always exit pick mode after one selection
+        onCancelPick?.();
+      }
+    };
+
+    map.on('click', handleClick);
+
+    // Esc to cancel
+    const handleKey = (ev) => {
+      if (ev.key === 'Escape') {
+        onCancelPick?.();
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+
+    return () => {
+      map.getCanvas().style.cursor = '';
+      map.off('click', handleClick);
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [pickTarget, onOriginChange, onDestinationChange, onCancelPick]);
 
   return (
     <div ref={mapComponentRef}>
