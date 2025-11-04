@@ -12,6 +12,8 @@ export default function MapComponent({ origin, destination, travelDateTime, setP
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [debug, setDebug] = useState(null);
 
+  const [bounds, setBounds] = useState(null);
+
   const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN;
 
   const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
@@ -51,16 +53,8 @@ export default function MapComponent({ origin, destination, travelDateTime, setP
       return;
     }
 
-    if (origin && destination) {
-      var xMin = origin.lat < destination.lat ? origin.lat : destination.lat;
-      var xMax = origin.lat > destination.lat ? origin.lat : destination.lat;
-      var yMin = origin.lng < destination.lng ? origin.lng : destination.lng;
-      var yMax = origin.lng > destination.lng ? origin.lng : destination.lng;
-
-      map.fitBounds([
-        [yMin, xMin],
-        [yMax, xMax]
-      ],
+    if (origin && destination && bounds) {
+      map.fitBounds(bounds,
       {
         padding: {top: 35, bottom:35, left: 35, right: 35}
       })
@@ -77,7 +71,7 @@ export default function MapComponent({ origin, destination, travelDateTime, setP
         zoom: 15
       })
     }
-  }, [mapRef, origin, destination]);
+  }, [mapRef, origin, destination, bounds]);
 
   return (
     <div ref={mapComponentRef}>
@@ -122,6 +116,7 @@ export default function MapComponent({ origin, destination, travelDateTime, setP
                 setModelInputs={setModelInputs}
                 setPrediction={setPrediction}
                 mapComponentRef={mapComponentRef}
+                setBounds={setBounds}
               />
               {isDataLoading ?
                 <div>

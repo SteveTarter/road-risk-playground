@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Layer, Marker, Source} from 'react-map-gl/mapbox';
 
-export default function RouteComponent({ origin, destination, travelDateTime, setIsDataLoading, setModelInputs, setPrediction, mapComponentRef }) {
+export default function RouteComponent({ origin, destination, travelDateTime, setIsDataLoading, setModelInputs, setPrediction, mapComponentRef, setBounds }) {
 
   const [routeData, setRouteData] = useState(null);
 
@@ -10,6 +10,7 @@ export default function RouteComponent({ origin, destination, travelDateTime, se
 
   useEffect(() => {
     if (!origin) {
+      setBounds(null);
       setOriginMarker(null);
       setModelInputs(null);
       setRouteData(null);
@@ -19,10 +20,11 @@ export default function RouteComponent({ origin, destination, travelDateTime, se
         <Marker longitude={origin.lng} latitude={origin.lat} />
       )
     }
-  }, [origin, setModelInputs, setPrediction]);
+  }, [origin, setModelInputs, setPrediction, setBounds]);
 
   useEffect(() => {
     if (!destination) {
+      setBounds(null);
       setDestinationMarker(null);
       setModelInputs(null);
       setRouteData(null);
@@ -32,7 +34,7 @@ export default function RouteComponent({ origin, destination, travelDateTime, se
         <Marker longitude={destination.lng} latitude={destination.lat} />
       )
     }
-  }, [destination, setModelInputs, setPrediction]);
+  }, [destination, setModelInputs, setPrediction, setBounds]);
 
   useEffect(() => {
     async function fetchData() {
@@ -43,6 +45,19 @@ export default function RouteComponent({ origin, destination, travelDateTime, se
       // Before starting the fetch, invalidate the route data.
       // This keeps the old route from appearing while the query runs.
       setRouteData(null);
+
+      // Calculate the bounds of this route based on the origin and destination.
+      // This is calculated again once the route is returned, as some routes
+      // may extend outside this initial box.
+      var minLat = origin.lat < destination.lat ? origin.lat : destination.lat;
+      var maxLat = origin.lat > destination.lat ? origin.lat : destination.lat;
+      var minLon = origin.lng < destination.lng ? origin.lng : destination.lng;
+      var maxLon = origin.lng > destination.lng ? origin.lng : destination.lng;
+      var bounds = [
+        [minLon, minLat],
+        [maxLon, maxLat]
+      ];
+      setBounds(bounds);
 
       const formattedData = {
         "o_lat": origin.lat,
@@ -69,19 +84,40 @@ export default function RouteComponent({ origin, destination, travelDateTime, se
         }
 
         const data = await response.json();
+        var routeData = data.mapbox_data.routes[0].geometry
         console.log("data: ", data);
         setModelInputs(data.model_inputs);
         setPrediction(data.prediction);
-        setRouteData(data.mapbox_data.routes[0].geometry);
+        setRouteData(routeData);
       } catch (error) {
         console.error("Error calling prediction model:", error);
       }
 
       console.log("Finished calling prediction model!!!!");
+
+      // Calculate the bounds of this route based on the points on the route.
+      minLat = Infinity;
+      maxLat = -Infinity;
+      minLon = Infinity;
+      maxLon = -Infinity;
+
+      for (const coordinate of routeData.coordinates) {
+        const [lon, lat] = coordinate;
+        minLon = Math.min(minLon, lon);
+        minLat = Math.min(minLat, lat);
+        maxLon = Math.max(maxLon, lon);
+        maxLat = Math.max(maxLat, lat);
+      }
+      bounds = [
+        [minLon, minLat],
+        [maxLon, maxLat]
+      ];
+      setBounds(bounds);
+
       setIsDataLoading(false);
     }
     fetchData();
-  }, [origin, destination, travelDateTime, setIsDataLoading, setModelInputs, setPrediction, mapComponentRef]);
+  }, [origin, destination, travelDateTime, setIsDataLoading, setModelInputs, setPrediction, mapComponentRef, setBounds]);
 
   const lineStyle = {
     id: 'line',
