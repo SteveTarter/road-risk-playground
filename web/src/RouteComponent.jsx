@@ -85,15 +85,12 @@ export default function RouteComponent({ origin, destination, travelDateTime, se
 
         const data = await response.json();
         var routeData = data.mapbox_data.routes[0].geometry
-        console.log("data: ", data);
         setModelInputs(data.model_inputs);
         setPrediction(data.prediction);
         setRouteData(routeData);
       } catch (error) {
         console.error("Error calling prediction model:", error);
       }
-
-      console.log("Finished calling prediction model!!!!");
 
       // Calculate the bounds of this route based on the points on the route.
       minLat = Infinity;
