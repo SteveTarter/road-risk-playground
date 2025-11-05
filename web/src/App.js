@@ -12,7 +12,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
 function App() {
-  const [activeSection, setActiveSection] = useState('');
+  const [activeInfoSection, setActiveInfoSection] = useState('');
 
   const [origin, setOrigin] = useState(null);         // {lng, lat, label}
   const [destination, setDestination] = useState(null); // {lng, lat, label}
@@ -23,8 +23,8 @@ function App() {
 
   const [pickTarget, setPickTarget] = useState(null); // 'origin' | 'destination' | null
 
-  const selectActiveSelection = (section) => {
-    setActiveSection(prev => (prev === section ? '' : section));
+  const selectActiveInfoSection = (section) => {
+    setActiveInfoSection(prev => (prev === section ? '' : section));
   }
 
   // Set travelDateTime to current time if it hasn't been set yet
@@ -49,45 +49,51 @@ function App() {
 
   return (
     <>
-      <NavBar onSelect={selectActiveSelection} />
+      <NavBar onSelect={selectActiveInfoSection} />
       <Container fluid className="py-3 bg-light">
-        <Row className="g-3">
-          {/* Other cards in the left column */}
-          <Col xs={12} md={4}>
+        <InfoPanel
+          activeInfoSection={activeInfoSection}
+          clearActiveInfoSection={() => setActiveInfoSection('')}
+        />
+        {!activeInfoSection &&
+          <>
             <RoadRiskPlayground />
-            <ControlsCard
-              origin={origin}
-              destination={destination}
-              onOriginChange={setOrigin}
-              onDestinationChange={setDestination}
-              travelDateTimeText={travelDateTimeText}
-              setTravelDateTimeText={setTravelDateTimeText}
-              pickTarget={pickTarget}
-              onStartPick={setPickTarget}
-              onCancelPick={() => setPickTarget(null)}
-            />
-            <ResultsCard
-              prediction={prediction}
-              modelInputs={modelInputs}
-            />
-            <InfoPanel activeSection={activeSection} />
-          </Col>
-          {/* Map in right column */}
-          <Col xs={12} md={8}>
-            <MapComponent
-              origin={origin}
-              destination={destination}
-              onOriginChange={setOrigin}
-              onDestinationChange={setDestination}
-              travelDateTime={travelDateTimeText}
-              setModelInputs={setModelInputs}
-              setPrediction={setPrediction}
-              pickTarget={pickTarget}
-              onCancelPick={() => setPickTarget(null)}
-            />
-          </Col>
-
-        </Row>
+            <Row className="g-3">
+              {/* Other cards in the left column */}
+              <Col xs={12} md={4}>
+                <ControlsCard
+                  origin={origin}
+                  destination={destination}
+                  onOriginChange={setOrigin}
+                  onDestinationChange={setDestination}
+                  travelDateTimeText={travelDateTimeText}
+                  setTravelDateTimeText={setTravelDateTimeText}
+                  pickTarget={pickTarget}
+                  onStartPick={setPickTarget}
+                  onCancelPick={() => setPickTarget(null)}
+                />
+                <ResultsCard
+                  prediction={prediction}
+                  modelInputs={modelInputs}
+                />
+              </Col>
+              {/* Map in right column */}
+              <Col xs={12} md={8}>
+                <MapComponent
+                  origin={origin}
+                  destination={destination}
+                  onOriginChange={setOrigin}
+                  onDestinationChange={setDestination}
+                  travelDateTime={travelDateTimeText}
+                  setModelInputs={setModelInputs}
+                  setPrediction={setPrediction}
+                  pickTarget={pickTarget}
+                  onCancelPick={() => setPickTarget(null)}
+                />
+              </Col>
+            </Row>
+          </>
+        }
       </Container>
     </>
   );
