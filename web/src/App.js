@@ -16,7 +16,7 @@ function App() {
 
   const [origin, setOrigin] = useState(null);         // {lng, lat, label}
   const [destination, setDestination] = useState(null); // {lng, lat, label}
-  const [travelDateTimeText, setTravelDateTimeText] = useState(""); // MUST BE in 'YYY-MM-DDTHH:mm:ss' format
+  const [travelDateTimeText, setTravelDateTimeText] = useState(""); // 'YYYY-MM-DD HH:mm' format to match chooser
   const [pickTarget, setPickTarget] = useState(null); // 'origin' | 'destination' | null
 
   const [modelInputs, setModelInputs] = useState(null);
