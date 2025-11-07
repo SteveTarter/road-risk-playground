@@ -14,6 +14,8 @@ function fmt(value) {
 export default function ResultsCard({
   modelInputs,
   prediction,
+  status,
+  error
 }) {
 
   if (!modelInputs) {
@@ -21,6 +23,7 @@ export default function ResultsCard({
   }
 
   const rows = [
+    ["Risk", prediction],
     ["Curvature", modelInputs.curvature],
     ["Holiday", modelInputs.holiday],
     ["Lighting", modelInputs.lighting],
@@ -29,7 +32,7 @@ export default function ResultsCard({
     ["Road Signs Present", modelInputs.road_signs_present],
     ["Road Type", modelInputs.road_type],
     ["School Season", modelInputs.school_season],
-    ["Speed Limit", modelInputs.speed_limit],
+    ["Speed Limit", Math.round(modelInputs.speed_limit)],
     ["Time of Day", modelInputs.time_of_day],
     ["Weather", modelInputs.weather],
   ];
@@ -40,18 +43,23 @@ export default function ResultsCard({
         <Card className="mb-3">
           <Card.Body>
             <Card.Title as="h5" className="mb-3">Results</Card.Title>
-            The risk of a crash was calculated to be {fmt(prediction)}<br/>
-            The below data was derived from the route and current conditions.
-            <Table size="sm" striped bordered hover responsive className="mb-0">
-              <tbody>
-                {rows.map(([label, value]) => (
-                  <tr key={label}>
-                    <th style={{ width: "40%" }}>{label}</th>
-                    <td>{fmt(value)}</td>
-                 </tr>
-                ))}
-              </tbody>
-            </Table>
+            {status === "idle" && <div>Click “Compute Risk” to run the model.</div>}
+            {status === "loading" && <div>Running…</div>}
+            {status === "error" && <div className="text-danger">Error: {String(error)}</div>}
+            {status === "done" && (
+              <>
+                <Table size="sm" striped bordered hover responsive className="mb-0">
+                  <tbody>
+                    {rows.map(([label, value]) => (
+                      <tr key={label}>
+                        <th style={{ width: "40%" }}>{label}</th>
+                        <td>{fmt(value)}</td>
+                    </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </>
+            )}
           </Card.Body>
         </Card>
       :

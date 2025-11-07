@@ -22,18 +22,19 @@ async function reverseGeocode(lng, lat) {
 export default function MapComponent({
   origin,
   destination,
+  routeData,
   onOriginChange,
   onDestinationChange,
   travelDateTime,
-  setPrediction,
-  setModelInputs,
   pickTarget,           // 'origin' | 'destination' | null
   onCancelPick,         // () => void
+  status
 }) {
   const mapRef = useRef(null);
   const containerRef = useRef(null);
 
   const [isDataLoading, setIsDataLoading] = useState(false);
+
   const [debug, setDebug] = useState(null);
 
   const [bounds, setBounds] = useState(null);
@@ -44,7 +45,6 @@ export default function MapComponent({
   const mapComponentRef = useRef(null);
 
   const onLoad = useCallback(() => {
-    setIsDataLoading(false);
     const debugStr = process.env.REACT_APP_DEBUG.toLowerCase();
     setDebug(debugStr === "true");
   }, []);
@@ -53,6 +53,14 @@ export default function MapComponent({
     // eslint-disable-next-line
     const currentZoom = viewState.zoom;
   }, []);
+
+  useEffect(() => {
+    if(!status) {
+      return;
+    }
+
+    setIsDataLoading(status === "loading")
+  }, [status, setIsDataLoading])
 
   // Keep map sized to its card when the card resizes
   useEffect(() => {
@@ -180,10 +188,7 @@ export default function MapComponent({
               <RouteComponent
                 origin={origin}
                 destination={destination}
-                travelDateTime={travelDateTime}
-                setIsDataLoading={setIsDataLoading}
-                setModelInputs={setModelInputs}
-                setPrediction={setPrediction}
+                routeData={routeData}
                 mapComponentRef={mapComponentRef}
                 setBounds={setBounds}
               />

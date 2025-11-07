@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { Layer, Marker, Source} from 'react-map-gl/mapbox';
 
-export default function RouteComponent({ origin, destination, travelDateTime, setIsDataLoading, setModelInputs, setPrediction, mapComponentRef, setBounds }) {
-
-  const [routeData, setRouteData] = useState(null);
+export default function RouteComponent({
+  origin,
+  destination,
+  routeData,
+  mapComponentRef,
+  setBounds
+}) {
 
   const [originMarker, setOriginMarker] = useState(null);
   const [destinationMarker, setDestinationMarker] = useState(null);
@@ -12,43 +16,30 @@ export default function RouteComponent({ origin, destination, travelDateTime, se
     if (!origin) {
       setBounds(null);
       setOriginMarker(null);
-      setModelInputs(null);
-      setRouteData(null);
-      setPrediction(null);
     } else {
       setOriginMarker(
         <Marker longitude={origin.lng} latitude={origin.lat} />
       )
     }
-  }, [origin, setModelInputs, setPrediction, setBounds]);
+  }, [origin, setBounds]);
 
   useEffect(() => {
     if (!destination) {
       setBounds(null);
       setDestinationMarker(null);
-      setModelInputs(null);
-      setRouteData(null);
-      setPrediction(null);
     } else {
       setDestinationMarker(
         <Marker longitude={destination.lng} latitude={destination.lat} />
       )
     }
-  }, [destination, setModelInputs, setPrediction, setBounds]);
+  }, [destination, setBounds]);
 
   useEffect(() => {
-    async function fetchData() {
-      if(!origin || !destination) {
-        return;
-      }
+    if(!origin || !destination) {
+      return;
+    }
 
-      // Before starting the fetch, invalidate the route data.
-      // This keeps the old route from appearing while the query runs.
-      setRouteData(null);
-
-      // Calculate the bounds of this route based on the origin and destination.
-      // This is calculated again once the route is returned, as some routes
-      // may extend outside this initial box.
+    if(!routeData) {
       var minLat = origin.lat < destination.lat ? origin.lat : destination.lat;
       var maxLat = origin.lat > destination.lat ? origin.lat : destination.lat;
       var minLon = origin.lng < destination.lng ? origin.lng : destination.lng;
@@ -59,38 +50,9 @@ export default function RouteComponent({ origin, destination, travelDateTime, se
       ];
       setBounds(bounds);
 
-      const formattedData = {
-        "o_lat": origin.lat,
-        "o_lng": origin.lng,
-        "d_lat": destination.lat,
-        "d_lng": destination.lng,
-        "date_str": travelDateTime
-      }
-
-      setIsDataLoading(true);
       mapComponentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start'});
-      const url = `${process.env.REACT_APP_API_BASE_URL}/drive-risk`;
-      try {
-        const response = await fetch(url, {
-          method: 'post',
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(formattedData),
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        var routeData = data.mapbox_data.routes[0].geometry
-        setModelInputs(data.model_inputs);
-        setPrediction(data.prediction);
-        setRouteData(routeData);
-      } catch (error) {
-        console.error("Error calling prediction model:", error);
-      }
+    }
+    else {
 
       // Calculate the bounds of this route based on the points on the route.
       minLat = Infinity;
@@ -111,10 +73,9 @@ export default function RouteComponent({ origin, destination, travelDateTime, se
       ];
       setBounds(bounds);
 
-      setIsDataLoading(false);
+      mapComponentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start'});
     }
-    fetchData();
-  }, [origin, destination, travelDateTime, setIsDataLoading, setModelInputs, setPrediction, mapComponentRef, setBounds]);
+  }, [origin, destination, routeData, mapComponentRef, setBounds]);
 
   const lineStyle = {
     id: 'line',

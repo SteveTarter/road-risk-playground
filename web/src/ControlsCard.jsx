@@ -36,6 +36,10 @@ export default function ControlsCard({
   pickTarget,
   onStartPick,
   onCancelPick,
+  onComputeRisk,
+  canCompute,
+  isComputing,
+  onCancelCompute,
 }) {
   // Local text for the visible inputs (controlled UI)
   const [originText, setOriginText] = useState(origin?.label || "");
@@ -48,27 +52,12 @@ export default function ControlsCard({
   // Simple label helper
   const pickLabel = (active) => (active ? 'Click a point…' : 'Pick on map');
 
-  useEffect((res) => {
-    if (!res || !res._d) {
+  useEffect(() => {
+    if (initialViewDate || !travelDateTimeText) {
       return;
     }
-
-    const newDateTime = new Date(res._d);
-    const newDateTimeStr = newDateTime.toISOString().slice(0,19)
-    console.log("newDateTimeStr", newDateTimeStr);
-    setTravelDateTimeText(newDateTimeStr);
-    if (!travelDateTimeText) {
-      return;
-    }
-
-    if (initialViewDate) {
-      return;
-    }
-
-    console.log("Converting travelDateTimeText: ", travelDateTimeText);
-    const newDt = new Date(travelDateTimeText);
-    setInitialViewDate(newDt);
-  },[travelDateTimeText, initialViewDate, setInitialViewDate, setTravelDateTimeText]);
+    setInitialViewDate(new Date(travelDateTimeText));
+  }, [travelDateTimeText, initialViewDate]);
 
   // When SearchBox returns a full feature (enter or click)
   const applySelection = useCallback((payload, setter, textSetter) => {
@@ -137,15 +126,17 @@ export default function ControlsCard({
   };
 
   const handleDateTimeChange = (res) => {
-    console.log("dateTime", res._d);
-
-    const newDateTime = new Date(res._d);
-    const newDateTimeStr = newDateTime.toISOString().slice(0,19)
-    console.log("newDateTimeStr", newDateTimeStr);
-    setTravelDateTimeText(newDateTimeStr);
+    if (!res || !res._d) {
+      return;
+    }
+    const ms = res._d.getTime() - res._d.getTimezoneOffset() * 60000;
+    var localIso = new Date(ms).toISOString().slice(0,16); // YYYY-MM-DDTHH:mm
+    localIso = localIso.slice(0,10) + ' ' + localIso.slice(11,16); // YYYY-MM-DD HH:mm
+    setTravelDateTimeText(localIso);
+    setInitialViewDate(res._d);
   };
 
-  const showDateTimeChooser = false;
+  const showDateTimeChooser = true;
 
   return (
     <Card className="mb-3">
@@ -202,17 +193,32 @@ export default function ControlsCard({
             </Button>
           </InputGroup>
 
-          { showDateTimeChooser &&
+          { showDateTimeChooser && initialViewDate &&
             <div className="form-group">
-              <label htmlFor="dateTimePicker">Select Date and Time:</label>
+              <label htmlFor="dateTimePicker">Date and Time:</label>
               <DateTime
                 onChange={handleDateTimeChange}
+                initialViewDate={initialViewDate}
                 inputProps={{ placeholder: travelDateTimeText }}
                 dateFormat="YYYY-MM-DD"
-                timeFormat="HH:mm:ss"
+                timeFormat="HH:mm"
               />
             </div>
           }
+          <div className="d-flex gap-2 mt-3">
+            <Button
+              variant="primary"
+              onClick={onComputeRisk}
+              disabled={!canCompute || isComputing}
+            >
+              {isComputing ? "Computing…" : "Compute Risk"}
+            </Button>
+            {isComputing && (
+              <Button variant="outline-secondary" onClick={onCancelCompute}>
+                Cancel
+              </Button>
+            )}
+          </div>
         </Form>
       </Card.Body>
     </Card>
