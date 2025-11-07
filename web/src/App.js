@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import NavBar from "./NavBar"
 import RoadRiskPlayground from "./RoadRiskPlayground";
 import InfoPanel from "./InfoPanel";
@@ -16,35 +16,98 @@ function App() {
 
   const [origin, setOrigin] = useState(null);         // {lng, lat, label}
   const [destination, setDestination] = useState(null); // {lng, lat, label}
-  const [travelDateTimeText, setTravelDateTimeText] = useState(""); // MUST BE in 'YYY-MM-DDTHH:mm:ss' format
+  const [travelDateTimeText, setTravelDateTimeText] = useState(""); // 'YYYY-MM-DD HH:mm' format to match chooser
+  const [pickTarget, setPickTarget] = useState(null); // 'origin' | 'destination' | null
 
   const [modelInputs, setModelInputs] = useState(null);
   const [prediction, setPrediction] = useState(null);
+  const [routeData, setRouteData] = useState(null);
 
-  const [pickTarget, setPickTarget] = useState(null); // 'origin' | 'destination' | null
+  const [status, setStatus] = useState("idle");       // idle | loading | error | done
+  const [error, setError] = useState(null);
+
+  const abortRef = useRef(null);
+
+  const canCompute = !!origin && !!destination && !!travelDateTimeText;
+
+  const requestPayload = useMemo(() => ({
+    o_lat: origin?.lat, o_lng: origin?.lng,
+    d_lat: destination?.lat, d_lng: destination?.lng,
+    date_str: travelDateTimeText
+  }), [origin, destination, travelDateTimeText]);
+
+  const computeRisk = useCallback(async () => {
+    if (!canCompute) {
+      return;
+    }
+
+    try {
+      setStatus("loading");
+      setError(null);
+
+      // Cancel any in-flight request
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
+
+      const url = `${process.env.REACT_APP_API_BASE_URL}/drive-risk`;
+
+      const response = await fetch(url, {
+        method: 'post',
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestPayload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      var routeData = data.mapbox_data.routes[0].geometry
+      setModelInputs(data.model_inputs);
+      setPrediction(data.prediction);
+      setRouteData(routeData);
+      setStatus("done");
+    } catch (error) {
+      console.error("Error calling prediction model:", error);
+      setStatus("error");
+      setError(error);
+    }
+  }, [canCompute, requestPayload]);
+
+  const cancelCompute = useCallback(() => {
+    abortRef.current?.abort();
+    setStatus("idle");
+  }, []);
+
+  const onOriginChange = useCallback((orig) => {
+    setRouteData(null);
+    setOrigin(orig)
+  }, [setOrigin, setRouteData]);
+
+  const onDestinationChange = useCallback((dest) => {
+    setRouteData(null);
+    setDestination(dest)
+  }, [setDestination, setRouteData]);
 
   const selectActiveInfoSection = (section) => {
     setActiveInfoSection(prev => (prev === section ? '' : section));
   }
 
+  // Invalidate the routeData if either origin or destination
   // Set travelDateTime to current time if it hasn't been set yet
   useEffect(() => {
     if (travelDateTimeText.length > 0) {
       return
     }
 
-    // Initialize to now in UTC timezone
-    const msTravelTime = new Date().getTime();
-
-    // Determine offset by multiplying minutes offset by 60 seconds and 1000 milliseconds
-    const msPerMinute = 60 * 1000;
-    const msTimezoneOffset = new Date().getTimezoneOffset() * msPerMinute;
-    const localDateTime = new Date(msTravelTime - msTimezoneOffset);
-
-    // Set to string in 'YYY-MM-DDTHH:mm:ss' format
-    var nowLocalDateTimeString = localDateTime.toISOString().slice(0,19)
-    nowLocalDateTimeString = nowLocalDateTimeString.slice(0,19)
-    setTravelDateTimeText(nowLocalDateTimeString);
+    // Initialize time of travel to now.
+    const now = new Date();
+    const localMs = now.getTime() - now.getTimezoneOffset() * 60000;
+    var localIso = new Date(localMs).toISOString().slice(0,16); // YYYY-MM-DDTHH:mm
+    localIso = localIso.slice(0,10) + ' ' + localIso.slice(11,16); // YYYY-MM-DD HH:mm
+    setTravelDateTimeText(localIso);
   }, [travelDateTimeText, setTravelDateTimeText]);
 
   return (
@@ -64,17 +127,23 @@ function App() {
                 <ControlsCard
                   origin={origin}
                   destination={destination}
-                  onOriginChange={setOrigin}
-                  onDestinationChange={setDestination}
+                  onOriginChange={onOriginChange}
+                  onDestinationChange={onDestinationChange}
                   travelDateTimeText={travelDateTimeText}
                   setTravelDateTimeText={setTravelDateTimeText}
                   pickTarget={pickTarget}
                   onStartPick={setPickTarget}
                   onCancelPick={() => setPickTarget(null)}
+                  onComputeRisk={computeRisk}
+                  canCompute={canCompute}
+                  isComputing={status === "loading"}
+                  onCancelCompute={cancelCompute}
                 />
                 <ResultsCard
                   prediction={prediction}
                   modelInputs={modelInputs}
+                  status={status}
+                  error={error}
                 />
               </Col>
               {/* Map in right column */}
@@ -82,13 +151,13 @@ function App() {
                 <MapComponent
                   origin={origin}
                   destination={destination}
-                  onOriginChange={setOrigin}
-                  onDestinationChange={setDestination}
+                  routeData={routeData}
+                  onOriginChange={onOriginChange}
+                  onDestinationChange={onDestinationChange}
                   travelDateTime={travelDateTimeText}
-                  setModelInputs={setModelInputs}
-                  setPrediction={setPrediction}
                   pickTarget={pickTarget}
                   onCancelPick={() => setPickTarget(null)}
+                  status={status}
                 />
               </Col>
             </Row>

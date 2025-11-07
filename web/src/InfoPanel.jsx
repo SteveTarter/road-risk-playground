@@ -42,8 +42,8 @@ export default function InfoPanel({
             </ul>
           </li>
           <li>
-            Optionally set the travel date/time. Lighting conditions are derived
-            from this timestamp and route location.
+            Travel date/time defaults to the current time, but other date/times can be selected.
+            Lighting conditions are derived from this timestamp and route location.
           </li>
           <li>
             Submit to generate the route, model inputs, and risk score. The
