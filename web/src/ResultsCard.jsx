@@ -15,7 +15,8 @@ export default function ResultsCard({
   modelInputs,
   prediction,
   status,
-  error
+  error,
+  color
 }) {
 
   if (!modelInputs) {
@@ -23,7 +24,6 @@ export default function ResultsCard({
   }
 
   const rows = [
-    ["Risk", prediction],
     ["Curvature", modelInputs.curvature],
     ["Holiday", modelInputs.holiday],
     ["Lighting", modelInputs.lighting],
@@ -50,6 +50,20 @@ export default function ResultsCard({
               <>
                 <Table size="sm" striped bordered hover responsive className="mb-0">
                   <tbody>
+                    <tr key="Risk">
+                      <th style={{ width: "40%" }}>Risk</th>
+                      <td>{fmt(prediction)}</td>
+                    </tr>
+                    <tr key="color">
+                      <th style={{ width: "40%"}}>Color</th>
+                      <td style={{
+                        backgroundColor: color,
+                        width: "2em",
+                        height: "1em"
+                      }}>
+                        &nbsp;
+                      </td>
+                    </tr>
                     {rows.map(([label, value]) => (
                       <tr key={label}>
                         <th style={{ width: "40%" }}>{label}</th>

@@ -14,6 +14,8 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 function App() {
   const [activeInfoSection, setActiveInfoSection] = useState('');
 
+  // eslint-disable-next-line
+  const [color, setColor] = useState("#ff7cbf")
   const [origin, setOrigin] = useState(null);         // {lng, lat, label}
   const [destination, setDestination] = useState(null); // {lng, lat, label}
   const [travelDateTimeText, setTravelDateTimeText] = useState(""); // 'YYYY-MM-DD HH:mm' format to match chooser
@@ -144,6 +146,7 @@ function App() {
                   modelInputs={modelInputs}
                   status={status}
                   error={error}
+                  color={color}
                 />
               </Col>
               {/* Map in right column */}
@@ -158,6 +161,7 @@ function App() {
                   pickTarget={pickTarget}
                   onCancelPick={() => setPickTarget(null)}
                   status={status}
+                  color={color}
                 />
               </Col>
             </Row>

@@ -20,6 +20,7 @@ async function reverseGeocode(lng, lat) {
 }
 
 export default function MapComponent({
+  color,
   origin,
   destination,
   routeData,
@@ -189,6 +190,7 @@ export default function MapComponent({
                 origin={origin}
                 destination={destination}
                 routeData={routeData}
+                color={color}
                 mapComponentRef={mapComponentRef}
                 setBounds={setBounds}
               />

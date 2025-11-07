@@ -5,6 +5,7 @@ export default function RouteComponent({
   origin,
   destination,
   routeData,
+  color,
   mapComponentRef,
   setBounds
 }) {
@@ -18,10 +19,14 @@ export default function RouteComponent({
       setOriginMarker(null);
     } else {
       setOriginMarker(
-        <Marker longitude={origin.lng} latitude={origin.lat} />
+        <Marker
+          color={color}
+          longitude={origin.lng}
+          latitude={origin.lat}
+        />
       )
     }
-  }, [origin, setBounds]);
+  }, [origin, color, setBounds]);
 
   useEffect(() => {
     if (!destination) {
@@ -29,10 +34,14 @@ export default function RouteComponent({
       setDestinationMarker(null);
     } else {
       setDestinationMarker(
-        <Marker longitude={destination.lng} latitude={destination.lat} />
+        <Marker
+        color={color}
+          longitude={destination.lng}
+          latitude={destination.lat}
+        />
       )
     }
-  }, [destination, setBounds]);
+  }, [destination, color, setBounds]);
 
   useEffect(() => {
     if(!origin || !destination) {
@@ -85,8 +94,8 @@ export default function RouteComponent({
       'line-cap': 'round'
     },
     paint: {
-      'line-width': 2,
-      'line-color': '#007cbf'
+      'line-width': 3,
+      'line-color': color,
     }
   };
 
