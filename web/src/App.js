@@ -1,51 +1,72 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {  useCallback, useEffect, useMemo, useRef, useState } from "react";
 import NavBar from "./NavBar"
 import RoadRiskPlayground from "./RoadRiskPlayground";
 import InfoPanel from "./InfoPanel";
 import MapComponent from "./MapComponent";
 import ControlsCard from "./ControlsCard";
 import ResultsCard from "./ResultsCard";
+import { RoutesProvider, useRoutes } from "./Context/RoutesContext";
 import Container from "react-bootstrap/Container"
 import Row from "react-bootstrap/Row"
 import Col from "react-bootstrap/Col"
 import 'mapbox-gl/dist/mapbox-gl.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
-function App() {
+/**
+ * Inner app uses RoutesContext as the single source of truth.
+ * Kept outside so <RoutesProvider> wraps the whole tree exactly once.
+ */
+function AppInner() {
   const [activeInfoSection, setActiveInfoSection] = useState('');
+  const [pickTarget, setPickTarget] = useState(null); // 'origin' | 'destination' | null
 
   // eslint-disable-next-line
   const [color, setColor] = useState("#ff7cbf")
-  const [origin, setOrigin] = useState(null);         // {lng, lat, label}
-  const [destination, setDestination] = useState(null); // {lng, lat, label}
-  const [travelDateTimeText, setTravelDateTimeText] = useState(""); // 'YYYY-MM-DD HH:mm' format to match chooser
-  const [pickTarget, setPickTarget] = useState(null); // 'origin' | 'destination' | null
 
-  const [modelInputs, setModelInputs] = useState(null);
-  const [prediction, setPrediction] = useState(null);
-  const [routeData, setRouteData] = useState(null);
-
-  const [status, setStatus] = useState("idle");       // idle | loading | error | done
-  const [error, setError] = useState(null);
+  const { active, updateActive, setActiveStatus, setActiveResult, addRoute } = useRoutes();
 
   const abortRef = useRef(null);
 
-  const canCompute = !!origin && !!destination && !!travelDateTimeText;
+  const canCompute = !!active?.origin && !!active?.destination && !!active?.travelDateTimeText;
+  const isComputing = active?.status === "loading";
 
-  const requestPayload = useMemo(() => ({
-    o_lat: origin?.lat, o_lng: origin?.lng,
-    d_lat: destination?.lat, d_lng: destination?.lng,
-    date_str: travelDateTimeText
-  }), [origin, destination, travelDateTimeText]);
+  const requestPayload = useMemo(() => {
+    if(!active) {
+      return null;
+    }
+
+    return {
+      o_lat: active.origin?.lat,
+      o_lng: active.origin?.lng,
+      d_lat: active.destination?.lat,
+      d_lng: active.destination?.lng,
+      date_str: active.travelDateTimeText,
+    };
+  }, [active]);
+
+  // Initialize the active route's travel time once, if empty
+  useEffect(() => {
+    if (!active) {
+      return;
+    }
+    if (active.travelDateTimeText) {
+      return;
+    }
+
+    const now = new Date();
+    const localMs = now.getTime() - now.getTimezoneOffset() * 60000;
+    let localIso = new Date(localMs).toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
+    localIso = localIso.slice(0, 10) + " " + localIso.slice(11, 16); // YYYY-MM-DD HH:mm
+    updateActive({ travelDateTimeText: localIso });
+  }, [active, updateActive]);
 
   const computeRisk = useCallback(async () => {
-    if (!canCompute) {
+    if (!canCompute || !requestPayload) {
       return;
     }
 
     try {
-      setStatus("loading");
-      setError(null);
+      setActiveStatus("loading", null);
 
       // Cancel any in-flight request
       abortRef.current?.abort();
@@ -59,6 +80,7 @@ function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(requestPayload),
+        signal: abortRef.current.signal,
       });
 
       if (!response.ok) {
@@ -66,51 +88,37 @@ function App() {
       }
 
       const data = await response.json();
-      var routeData = data.mapbox_data.routes[0].geometry
-      setModelInputs(data.model_inputs);
-      setPrediction(data.prediction);
-      setRouteData(routeData);
-      setStatus("done");
+      var routeData = data.mapbox_data?.routes?.[0]?.geometry ?? null;
+
+      // Persist results on the active route
+      setActiveResult({
+        modelInputs: data.model_inputs ?? null,
+        prediction: data.prediction ?? null,
+        status: "done",
+      });
+
+      updateActive({ routeData: routeData })
+
+      // Immediately create a new route and switch to it.
+      addRoute();
     } catch (error) {
+      if (error.name === "AbortError") {
+        return;
+      }
+
+      setActiveStatus("error", String(error));
       console.error("Error calling prediction model:", error);
-      setStatus("error");
-      setError(error);
     }
-  }, [canCompute, requestPayload]);
+  }, [canCompute, requestPayload, setActiveResult, setActiveStatus, updateActive, addRoute]);
 
   const cancelCompute = useCallback(() => {
     abortRef.current?.abort();
-    setStatus("idle");
-  }, []);
-
-  const onOriginChange = useCallback((orig) => {
-    setRouteData(null);
-    setOrigin(orig)
-  }, [setOrigin, setRouteData]);
-
-  const onDestinationChange = useCallback((dest) => {
-    setRouteData(null);
-    setDestination(dest)
-  }, [setDestination, setRouteData]);
+    setActiveStatus("idle", null);
+  }, [setActiveStatus]);
 
   const selectActiveInfoSection = (section) => {
     setActiveInfoSection(prev => (prev === section ? '' : section));
   }
-
-  // Invalidate the routeData if either origin or destination
-  // Set travelDateTime to current time if it hasn't been set yet
-  useEffect(() => {
-    if (travelDateTimeText.length > 0) {
-      return
-    }
-
-    // Initialize time of travel to now.
-    const now = new Date();
-    const localMs = now.getTime() - now.getTimezoneOffset() * 60000;
-    var localIso = new Date(localMs).toISOString().slice(0,16); // YYYY-MM-DDTHH:mm
-    localIso = localIso.slice(0,10) + ' ' + localIso.slice(11,16); // YYYY-MM-DD HH:mm
-    setTravelDateTimeText(localIso);
-  }, [travelDateTimeText, setTravelDateTimeText]);
 
   return (
     <>
@@ -127,40 +135,28 @@ function App() {
               {/* Other cards in the left column */}
               <Col xs={12} md={4}>
                 <ControlsCard
-                  origin={origin}
-                  destination={destination}
-                  onOriginChange={onOriginChange}
-                  onDestinationChange={onDestinationChange}
-                  travelDateTimeText={travelDateTimeText}
-                  setTravelDateTimeText={setTravelDateTimeText}
                   pickTarget={pickTarget}
                   onStartPick={setPickTarget}
                   onCancelPick={() => setPickTarget(null)}
                   onComputeRisk={computeRisk}
                   canCompute={canCompute}
-                  isComputing={status === "loading"}
+                  isComputing={isComputing}
                   onCancelCompute={cancelCompute}
-                />
-                <ResultsCard
-                  prediction={prediction}
-                  modelInputs={modelInputs}
-                  status={status}
-                  error={error}
-                  color={color}
                 />
               </Col>
               {/* Map in right column */}
               <Col xs={12} md={8}>
                 <MapComponent
-                  origin={origin}
-                  destination={destination}
-                  routeData={routeData}
-                  onOriginChange={onOriginChange}
-                  onDestinationChange={onDestinationChange}
-                  travelDateTime={travelDateTimeText}
                   pickTarget={pickTarget}
                   onCancelPick={() => setPickTarget(null)}
-                  status={status}
+                />
+              </Col>
+              <Col xs={12} md={12}>
+                <ResultsCard
+                  prediction={active?.prediction ?? null}
+                  modelInputs={active?.modelInputs ?? null}
+                  status={active?.status ?? "idle"}
+                  error={active?.error ?? null}
                   color={color}
                 />
               </Col>
@@ -169,6 +165,14 @@ function App() {
         }
       </Container>
     </>
+  );
+}
+
+function App() {
+  return (
+    <RoutesProvider>
+      <AppInner />
+    </RoutesProvider>
   );
 }
 

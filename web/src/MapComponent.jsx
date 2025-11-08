@@ -1,8 +1,9 @@
 import Map from "react-map-gl/mapbox";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SpinnerLoading } from "./Utils/SpinnerLoading"
 import { Card } from "react-bootstrap";
 import RouteComponent from "./RouteComponent";
+import { useRoutes } from "./Context/RoutesContext"
 import "./MapComponent.css"
 
 const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN;
@@ -19,6 +20,28 @@ async function reverseGeocode(lng, lat) {
   return f?.place_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 }
 
+// simple distinct-ish palette
+const COLORS = ["#1976d2", "#d32f2f", "#388e3c", "#f57c00", "#7b1fa2", "#00838f", "#5d4037"];
+const pickColor = (i) => COLORS[i % COLORS.length];
+
+// union bounds of many [minX,minY,maxX,maxY]
+function extendBBox(b, more) {
+  if (!more) {
+    return b;
+  }
+
+  if (!b) {
+    return [...more];
+  }
+
+  b[0] = Math.min(b[0], more[0]);
+  b[1] = Math.min(b[1], more[1]);
+  b[2] = Math.max(b[2], more[2]);
+  b[3] = Math.max(b[3], more[3]);
+
+  return b;
+}
+
 export default function MapComponent({
   color,
   origin,
@@ -27,41 +50,29 @@ export default function MapComponent({
   onOriginChange,
   onDestinationChange,
   travelDateTime,
-  pickTarget,           // 'origin' | 'destination' | null
+  pickTarget,           // "origin" | "destination" | null
   onCancelPick,         // () => void
   status
 }) {
+  const { routes, activeIndex, active, updateActive } = useRoutes();
+
   const mapRef = useRef(null);
   const containerRef = useRef(null);
-
-  const [isDataLoading, setIsDataLoading] = useState(false);
-
   const [debug, setDebug] = useState(null);
 
-  const [bounds, setBounds] = useState(null);
+  // spinner if any active route is loading
+  const isDataLoading = routes.some((r) => r.status === "loading");
+
 
   const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
   const mapStyle = MAP_STYLE_STREET;
 
   const mapComponentRef = useRef(null);
 
-  const onLoad = useCallback(() => {
-    const debugStr = process.env.REACT_APP_DEBUG.toLowerCase();
-    setDebug(debugStr === "true");
-  }, []);
-
-  const onZoom = useCallback((viewState) => {
-    // eslint-disable-next-line
-    const currentZoom = viewState.zoom;
-  }, []);
-
   useEffect(() => {
-    if(!status) {
-      return;
-    }
-
-    setIsDataLoading(status === "loading")
-  }, [status, setIsDataLoading])
+    const dbg = (process.env.REACT_APP_DEBUG || "").toLowerCase() === "true";
+    setDebug(dbg);
+  }, []);
 
   // Keep map sized to its card when the card resizes
   useEffect(() => {
@@ -78,42 +89,61 @@ export default function MapComponent({
     return () => ro.disconnect();
   }, []);
 
+  // compute an overall bbox across all routes (origins/dests + optional routeData bbox)
+  const combinedBBox = useMemo(() => {
+    let b = null;
+    for (const r of routes) {
+      if (r.origin) {
+        b = extendBBox(b, [r.origin.lng, r.origin.lat, r.origin.lng, r.origin.lat]);
+      }
+      if (r.destination) {
+        b = extendBBox(b, [r.destination.lng, r.destination.lat, r.destination.lng, r.destination.lat]);
+      }
+      // if you store a route geojson bbox on r.routeData?.bbox = [minX,minY,maxX,maxY], include it:
+      if (r.routeData) {
+        // Calculate the bounds of this route based on the points on the route.
+        var minLat = Infinity;
+        var maxLat = -Infinity;
+        var minLon = Infinity;
+        var maxLon = -Infinity;
+
+        for (const coordinate of r.routeData.coordinates) {
+          const [lon, lat] = coordinate;
+          minLon = Math.min(minLon, lon);
+          minLat = Math.min(minLat, lat);
+          maxLon = Math.max(maxLon, lon);
+          maxLat = Math.max(maxLat, lat);
+        }
+
+        b = extendBBox(b, [minLon, minLat, maxLon, maxLat]);
+      }
+    }
+    return b;
+  }, [routes]);
+
+  // fit to everything when routes change
   useEffect(() => {
     const map = mapRef.current?.getMap?.();
-    if (!map) {
+    if (!map || !combinedBBox) {
       return;
     }
 
-    if (origin && destination && bounds) {
-      map.fitBounds(bounds,
-      {
-        padding: {top: 35, bottom:35, left: 35, right: 35}
-      })
-    }
-    else if (origin) {
-       map.flyTo({
-        center: [origin.lng, origin.lat],
-        zoom: 15
-      })
-    }
-    else if (destination) {
-      map.flyTo({
-        center: [destination.lng, destination.lat],
-        zoom: 15
-      })
-    }
-  }, [mapRef, origin, destination, bounds]);
+    map.fitBounds(
+      [
+        [combinedBBox[0], combinedBBox[1]],
+        [combinedBBox[2], combinedBBox[3]],
+      ],
+      { padding: { top: 40, bottom: 40, left: 40, right: 40 } }
+    );
+  }, [combinedBBox]);
 
   useEffect(() => {
     const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;
-    if (!map) {
+    if (!map || !pickTarget) {
       return;
     }
 
-    if (!pickTarget) {
-      return; // only attach while picking
-    }
-    map.getCanvas().style.cursor = 'crosshair';
+    map.getCanvas().style.cursor = "crosshair";
 
     const handleClick = async (e) => {
       try {
@@ -121,35 +151,36 @@ export default function MapComponent({
         const label = await reverseGeocode(lng, lat);
         const point = { lng, lat, label };
 
-        if (pickTarget === 'origin') {
-          onOriginChange(point);
-        } else if (pickTarget === 'destination') {
-          onDestinationChange(point);
+        if (pickTarget === "origin") {
+          updateActive({ origin: point });
+        } else if (pickTarget === "destination") {
+          updateActive({ destination: point });
         }
       } catch (err) {
         console.error(err);
       } finally {
         // always exit pick mode after one selection
         onCancelPick?.();
+        map.getCanvas().style.cursor = "";
       }
     };
 
-    map.on('click', handleClick);
+    map.on("click", handleClick);
 
     // Esc to cancel
     const handleKey = (ev) => {
-      if (ev.key === 'Escape') {
+      if (ev.key === "Escape") {
         onCancelPick?.();
       }
     };
-    window.addEventListener('keydown', handleKey);
+    window.addEventListener("keydown", handleKey);
 
     return () => {
-      map.getCanvas().style.cursor = '';
-      map.off('click', handleClick);
-      window.removeEventListener('keydown', handleKey);
+      map.getCanvas().style.cursor = "";
+      map.off("click", handleClick);
+      window.removeEventListener("keydown", handleKey);
     };
-  }, [pickTarget, onOriginChange, onDestinationChange, onCancelPick]);
+  }, [pickTarget, updateActive, onCancelPick]);
 
   return (
     <div ref={mapComponentRef}>
@@ -160,11 +191,10 @@ export default function MapComponent({
             <>
               <small className="text-muted">
                 <span>&nbsp;·&nbsp;Debug Mode&nbsp;·&nbsp;</span>
-                {travelDateTime ? (
-                  <span>{travelDateTime}&nbsp;·&nbsp;</span>
-                  ) : 'Time not set · '
+                {active?.travelDateTimeText ?
+                  `${active.travelDateTimeText} · `: "Time not set · "
                 }
-                {origin ? "Origin set" : "Origin not set"} · {destination ? "Destination set" : "Destination not set"}
+                {(active?.origin ? "Origin set" : "Origin not set")} · {(active?.destination ? "Destination set" : "Destination not set")}
             </small>
             </>
           }
@@ -176,24 +206,26 @@ export default function MapComponent({
               ref={mapRef}
               mapStyle={mapStyle}
               mapboxAccessToken={mapboxToken}
-              onLoad={() => onLoad()}
               fog={{}}
               initialViewState={{
                 longitude: -97.5,
                 latitude: 32.75,
                 zoom: 10,
               }}
-              onZoom={onZoom}
               style={{ width: "100%", height: "100%" }}
             >
+            {/* Render ALL routes; active route is highlighted */}
+            {routes.map((r, i) => (
               <RouteComponent
-                origin={origin}
-                destination={destination}
-                routeData={routeData}
-                color={color}
-                mapComponentRef={mapComponentRef}
-                setBounds={setBounds}
+                id={r.id}
+                key={r.id}
+                origin={r.origin}
+                destination={r.destination}
+                routeData={r.routeData }
+                color={pickColor(i)}
+                isDimmed={i !== activeIndex}    // let RouteComponent reduce opacity when not active
               />
+            ))}
               {isDataLoading ?
                 <div>
                   <SpinnerLoading />

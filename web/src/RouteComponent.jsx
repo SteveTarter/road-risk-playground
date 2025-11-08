@@ -1,113 +1,78 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Layer, Marker, Source} from 'react-map-gl/mapbox';
 
 export default function RouteComponent({
+  id,
   origin,
   destination,
   routeData,
   color,
-  mapComponentRef,
-  setBounds
+  isDimmed
 }) {
 
-  const [originMarker, setOriginMarker] = useState(null);
-  const [destinationMarker, setDestinationMarker] = useState(null);
+  // Normalize routeData into GeoJSON Feature<LineString>
+  const lineFeature = useMemo(() => {
+    if (!routeData) return null;
 
-  useEffect(() => {
-    if (!origin) {
-      setBounds(null);
-      setOriginMarker(null);
-    } else {
-      setOriginMarker(
-        <Marker
-          color={color}
-          longitude={origin.lng}
-          latitude={origin.lat}
-        />
-      )
-    }
-  }, [origin, color, setBounds]);
-
-  useEffect(() => {
-    if (!destination) {
-      setBounds(null);
-      setDestinationMarker(null);
-    } else {
-      setDestinationMarker(
-        <Marker
-        color={color}
-          longitude={destination.lng}
-          latitude={destination.lat}
-        />
-      )
-    }
-  }, [destination, color, setBounds]);
-
-  useEffect(() => {
-    if(!origin || !destination) {
-      return;
+    // If it's already a GeoJSON Feature
+    if (routeData.type === "Feature" && routeData.geometry?.type === "LineString") {
+      return routeData;
     }
 
-    if(!routeData) {
-      var minLat = origin.lat < destination.lat ? origin.lat : destination.lat;
-      var maxLat = origin.lat > destination.lat ? origin.lat : destination.lat;
-      var minLon = origin.lng < destination.lng ? origin.lng : destination.lng;
-      var maxLon = origin.lng > destination.lng ? origin.lng : destination.lng;
-      var bounds = [
-        [minLon, minLat],
-        [maxLon, maxLat]
-      ];
-      setBounds(bounds);
-
-      mapComponentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start'});
+    // If it's a bare GeoJSON geometry
+    if (routeData.type === "LineString" && Array.isArray(routeData.coordinates)) {
+      return { type: "Feature", geometry: routeData, properties: {} };
     }
-    else {
 
-      // Calculate the bounds of this route based on the points on the route.
-      minLat = Infinity;
-      maxLat = -Infinity;
-      minLon = Infinity;
-      maxLon = -Infinity;
-
-      for (const coordinate of routeData.coordinates) {
-        const [lon, lat] = coordinate;
-        minLon = Math.min(minLon, lon);
-        minLat = Math.min(minLat, lat);
-        maxLon = Math.max(maxLon, lon);
-        maxLat = Math.max(maxLat, lat);
-      }
-      bounds = [
-        [minLon, minLat],
-        [maxLon, maxLat]
-      ];
-      setBounds(bounds);
-
-      mapComponentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start'});
+    // If your API returns { coordinates: [...] } (Mapbox Directions geometry when using "geojson" option)
+    if (Array.isArray(routeData.coordinates)) {
+      return {
+        type: "Feature",
+        geometry: { type: "LineString", coordinates: routeData.coordinates },
+        properties: {},
+      };
     }
-  }, [origin, destination, routeData, mapComponentRef, setBounds]);
 
-  const lineStyle = {
-    id: 'line',
-    type: 'line',
-    layout: {
-      'line-join': 'round',
-      'line-cap': 'round'
-    },
-    paint: {
-      'line-width': 3,
-      'line-color': color,
-    }
-  };
+    return null;
+  }, [routeData]);
+
+  // Give each route unique source/layer IDs
+  const sourceId = `route-src-${id}`;
+  const layerId  = `route-line-${id}`;
 
   return (
     <>
-      {originMarker}
-      {destinationMarker}
-      {routeData &&
-        <Source type="geojson" data={routeData}>
-          <Layer {...lineStyle} />
+      {lineFeature && (
+        <Source id={sourceId} type="geojson" data={lineFeature}>
+          <Layer
+            id={layerId}
+            type="line"
+            paint={{
+              "line-color": color,
+              "line-width": 4,
+              "line-opacity": isDimmed ? 0.35 : 0.9,
+            }}
+          />
         </Source>
-      }
+      )}
+
+      {/* Optional: show markers for this route too (color-coded) */}
+      {origin && (
+        <Marker longitude={origin.lng} latitude={origin.lat} anchor="bottom">
+          <div style={{
+            width: 10, height: 10, borderRadius: "50%",
+            background: color, border: "2px solid white", boxShadow: "0 0 2px rgba(0,0,0,0.5)"
+          }}/>
+        </Marker>
+      )}
+      {destination && (
+        <Marker longitude={destination.lng} latitude={destination.lat} anchor="bottom">
+          <div style={{
+            width: 10, height: 10, borderRadius: "50%",
+            background: color, border: "2px solid white", boxShadow: "0 0 2px rgba(0,0,0,0.5)"
+          }}/>
+        </Marker>
+      )}
     </>
-  )
+  );
 }
