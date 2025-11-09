@@ -3,15 +3,13 @@
   position: relative;
   width: 100%;
   /* Prefer aspect-ratio; fallback to min-height for older browsers */
-  aspect-ratio: 4 / 3;
-  min-height: 320px;
+  height: 320px;
 }
 
 /* On taller/wider screens, allow a bit more height but still card-like */
 @media (min-width: 768px) {
   .map-card .map-viewport {
-    aspect-ratio: 16 / 10;  /* a little wider on desktop */
-    min-height: 380px;
+    height: 380px;
   }
 }
 

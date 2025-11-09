@@ -9,7 +9,7 @@ The project was built in response to the Kaggle Playground competition, [Predict
 You can explore the live demo here:
 https://road-risk-playground.tarterware.com/
 
-![Road Risk Playground screenshot](./Resources/img/RoadRiskPlayground-20251103-1.png)
+![Road Risk Playground screenshot](./Resources/img/RoadRiskPlayground-2025-11-31-09-1.png)
 
 ## How It Works
 
@@ -48,7 +48,6 @@ Resources/        Screenshots and diagrams
 
 ## Status and Future Work
 Planned enhancements include:
-*   Route comparison mode (multiple alternate paths scored side-by-side).
 *   More granular weather and traffic-volume features.
 *   Continuous integration pipeline for automatic model updates.
-
+*   Store predictions in S3 and add a "browse past predictions" page.
