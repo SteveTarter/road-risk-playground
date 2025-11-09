@@ -13,13 +13,20 @@ import React, {
   useMemo
 } from "react";
 
+let __routeCounter = 0;
+
 /**
  * Factory for creating a blank route object.
  * @param {Partial<Route>} partial - optional fields to override defaults
  */
 function newRoute(partial = {}) {
+  const uid =
+    (typeof crypto !== "undefined" && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : `route-${Date.now()}-${__routeCounter++}`;
+
   return {
-    id: crypto.randomUUID?.() || String(Date.now() + Math.random()),
+    id: uid,
     origin: null,                   // {lat, lng, label}
     destination: null,              // {lat, lng, label}
     travelDateTimeText: "",         // YYYY-MM-DD HH:mm

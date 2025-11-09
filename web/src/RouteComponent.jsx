@@ -6,8 +6,7 @@ export default function RouteComponent({
   origin,
   destination,
   routeData,
-  color,
-  isDimmed
+  color
 }) {
 
   // Normalize routeData into GeoJSON Feature<LineString>
@@ -50,7 +49,7 @@ export default function RouteComponent({
             paint={{
               "line-color": color,
               "line-width": 4,
-              "line-opacity": isDimmed ? 0.35 : 0.9,
+              "line-opacity": 0.9,
             }}
           />
         </Source>
@@ -58,20 +57,10 @@ export default function RouteComponent({
 
       {/* Optional: show markers for this route too (color-coded) */}
       {origin && (
-        <Marker longitude={origin.lng} latitude={origin.lat} anchor="bottom">
-          <div style={{
-            width: 10, height: 10, borderRadius: "50%",
-            background: color, border: "2px solid white", boxShadow: "0 0 2px rgba(0,0,0,0.5)"
-          }}/>
-        </Marker>
+        <Marker longitude={origin.lng} latitude={origin.lat} color={color}/>
       )}
       {destination && (
-        <Marker longitude={destination.lng} latitude={destination.lat} anchor="bottom">
-          <div style={{
-            width: 10, height: 10, borderRadius: "50%",
-            background: color, border: "2px solid white", boxShadow: "0 0 2px rgba(0,0,0,0.5)"
-          }}/>
-        </Marker>
+        <Marker longitude={destination.lng} latitude={destination.lat} color={color}/>
       )}
     </>
   );

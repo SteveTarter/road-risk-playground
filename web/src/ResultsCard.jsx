@@ -2,6 +2,9 @@ import React from "react";
 import { Card, Table } from "react-bootstrap";
 import { useRoutes } from "./Context/RoutesContext";
 
+const isComplete = (r) =>
+  r?.status === "done" && r?.prediction != null && r?.modelInputs;
+
 function fmt(value) {
   if (typeof value === "boolean") {
     return value ? "True" : "False";
@@ -17,7 +20,9 @@ const COLORS = ["#1976d2", "#d32f2f", "#388e3c", "#f57c00", "#7b1fa2", "#00838f"
 const pickColor = (i, r) => r?.meta?.color || COLORS[i % COLORS.length];
 
 export default function ResultsCard() {
-  const { routes, activeIndex } = useRoutes();
+  const { routes } = useRoutes();
+  const done = routes.filter(isComplete);
+  if (done.length === 0) return null;
 
   // Show the card only if at least one route has either a prediction or inputs
   const anyData = routes?.some((r) => r?.prediction != null || r?.modelInputs != null);
@@ -49,21 +54,16 @@ export default function ResultsCard() {
     <Card className="mb-3">
       <Card.Body>
         <Card.Title as="h5" className="mb-3">Results</Card.Title>
-
         <Table size="sm" striped bordered hover responsive className="mb-0">
           <thead>
             <tr>
               <th style={{ width: "40%" }}>Feature</th>
-              {routes.map((r, i) => (
+              {done.map((r, i) => (
                 <th
                   key={r.id}
-                  style={{ textAlign: "center", opacity: i === activeIndex ? 1 : 0.85 }}
-                  title={
-                    (r.origin?.label ? `${r.origin.label} → ` : "") +
-                    (r.destination?.label || "")
-                  }
+                  style={{ textAlign: "center" }}
                 >
-                  Route {i + 1}
+                  Route {routes.indexOf(r) + 1}
                 </th>
               ))}
             </tr>
@@ -72,11 +72,9 @@ export default function ResultsCard() {
             {/* Risk row */}
             <tr>
               <th>Risk</th>
-              {routes.map((r, i) => (
-                <td key={r.id} style={{ fontWeight: i === activeIndex ? 600 : 400, textAlign: "center" }}>
-                  {r.status === "loading" ? "Computing…" :
-                  r.status === "error"   ? "Error" :
-                  r.prediction != null   ? fmt(r.prediction) : "—"}
+              {done.map((r, i) => (
+                <td key={r.id} style={{ textAlign: "center" }}>
+                  {fmt(r.prediction)}
                 </td>
               ))}
             </tr>
@@ -84,7 +82,7 @@ export default function ResultsCard() {
             {/* Color row */}
             <tr>
               <th>Color</th>
-              {routes.map((r, i) => {
+              {done.map((r, i) => {
                 const c = pickColor(i, r);
                 return (
                   <td key={r.id} style={{ textAlign: "center" }}>
@@ -108,8 +106,8 @@ export default function ResultsCard() {
             {fieldRows.map(([label, accessor]) => (
               <tr key={label}>
                 <th>{label}</th>
-                {routes.map((r) => (
-                  <td key={r.id}>{fmt(accessor(r))}</td>
+                {done.map((r) => (
+                  <td key={r.id} style={{ textAlign: "center" }}>{fmt(accessor(r))}</td>
                 ))}
               </tr>
             ))}
