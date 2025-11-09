@@ -1,5 +1,5 @@
 import Map from "react-map-gl/mapbox";
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import { SpinnerLoading } from "./Utils/SpinnerLoading"
 import { Card } from "react-bootstrap";
 import RouteComponent from "./RouteComponent";
@@ -9,15 +9,29 @@ import "./MapComponent.css"
 const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN;
 const mapboxApiUrl = process.env.REACT_APP_MAPBOX_API_URL;
 
-async function reverseGeocode(lng, lat) {
+async function reverseGeocodeSnap(lng, lat) {
   const url =
     `${mapboxApiUrl}/geocoding/v5/mapbox.places/${lng},${lat}.json` +
     `?types=address,place&limit=1&access_token=${encodeURIComponent(mapboxToken)}`;
+
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Reverse geocode failed: ${res.status}`);
+  if (!res.ok) {
+    throw new Error(`Reverse geocode failed: ${res.status}`);
+  }
+
   const data = await res.json();
   const f = data?.features?.[0];
-  return f?.place_name || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+
+  if (f) {
+    const [slng, slat] =
+      f.center ||
+      (Array.isArray(f.geometry?.coordinates) ? f.geometry.coordinates : [lng, lat]);
+
+    return { lng: slng, lat: slat, label: f.place_name || "", feature: f };
+  }
+
+  // fallback: keep the click
+  return { lng, lat, label: `${lat.toFixed(5)}, ${lng.toFixed(5)}`, feature: null };
 }
 
 // simple distinct-ish palette
@@ -42,18 +56,12 @@ function extendBBox(b, more) {
   return b;
 }
 
-export default function MapComponent({
-  color,
-  origin,
-  destination,
-  routeData,
-  onOriginChange,
-  onDestinationChange,
-  travelDateTime,
-  pickTarget,           // "origin" | "destination" | null
-  onCancelPick,         // () => void
-  status
-}) {
+const MapComponent = forwardRef(function MapComponent(props, ref) {
+  const {
+    pickTarget,           // "origin" | "destination" | null
+    onCancelPick,         // () => void
+  } = props;
+
   const { routes, activeIndex, active, updateActive } = useRoutes();
 
   const mapRef = useRef(null);
@@ -68,6 +76,8 @@ export default function MapComponent({
   const mapStyle = MAP_STYLE_STREET;
 
   const mapComponentRef = useRef(null);
+  // expose the DOM node to parent
+  React.useImperativeHandle(ref, () => mapComponentRef.current, []);
 
   useEffect(() => {
     const dbg = (process.env.REACT_APP_DEBUG || "").toLowerCase() === "true";
@@ -148,13 +158,12 @@ export default function MapComponent({
     const handleClick = async (e) => {
       try {
         const { lng, lat } = e.lngLat;
-        const label = await reverseGeocode(lng, lat);
-        const point = { lng, lat, label };
+        const snapped = await reverseGeocodeSnap(lng, lat);
 
         if (pickTarget === "origin") {
-          updateActive({ origin: point });
+          updateActive({ origin: snapped });
         } else if (pickTarget === "destination") {
-          updateActive({ destination: point });
+          updateActive({ destination: snapped });
         }
       } catch (err) {
         console.error(err);
@@ -239,4 +248,6 @@ export default function MapComponent({
       </Card>
     </div>
    )
-}
+});
+
+export default MapComponent;

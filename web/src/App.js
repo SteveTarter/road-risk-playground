@@ -26,6 +26,8 @@ function AppInner() {
   const { active, updateActive, setActiveStatus, setActiveResult, addRoute } = useRoutes();
 
   const abortRef = useRef(null);
+  const controlsCardRef = useRef(null);
+  const mapComponentRef = useRef(null);
 
   const canCompute = !!active?.origin && !!active?.destination && !!active?.travelDateTimeText;
   const isComputing = active?.status === "loading";
@@ -74,6 +76,15 @@ function AppInner() {
     updateActive({ travelDateTimeText: localIso });
   }, [active, updateActive]);
 
+  useEffect(() => {
+    if (pickTarget) {
+      // Scroll to the MapComponent so that the location can be clicked without user scrolling..
+      if (mapComponentRef.current) {
+        mapComponentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start'});
+      }
+    }
+  }, [pickTarget]);
+
   const computeRisk = useCallback(async () => {
     if (!canCompute || !requestPayload) {
       return;
@@ -111,6 +122,11 @@ function AppInner() {
         prediction: data.prediction ?? null,
         status: "done",
       });
+
+      // Scroll to the MapComponent so that the ResultsCard will also be seen on mobile screens.
+      if (mapComponentRef.current) {
+        mapComponentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start'});
+      }
 
       updateActive({
         routeData: routeData,
@@ -153,9 +169,9 @@ function AppInner() {
               {/* Other cards in the left column */}
               <Col xs={12} md={4}>
                 <ControlsCard
+                  ref={controlsCardRef}
                   pickTarget={pickTarget}
                   onStartPick={setPickTarget}
-                  onCancelPick={() => setPickTarget(null)}
                   onComputeRisk={computeRisk}
                   canCompute={canCompute}
                   isComputing={isComputing}
@@ -165,18 +181,13 @@ function AppInner() {
               {/* Map in right column */}
               <Col xs={12} md={8}>
                 <MapComponent
+                  ref={mapComponentRef}
                   pickTarget={pickTarget}
                   onCancelPick={() => setPickTarget(null)}
                 />
               </Col>
               <Col xs={12} md={12}>
-                <ResultsCard
-                  prediction={active?.prediction ?? null}
-                  modelInputs={active?.modelInputs ?? null}
-                  status={active?.status ?? "idle"}
-                  error={active?.error ?? null}
-                  color={color}
-                />
+                <ResultsCard />
               </Col>
             </Row>
           </>

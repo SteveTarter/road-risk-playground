@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { forwardRef, useCallback, useEffect, useRef, useState } from "react";
 import { Card, Form, Button, InputGroup } from "react-bootstrap";
 import { SearchBox } from "@mapbox/search-js-react";
 import DateTime from 'react-datetime';
@@ -27,15 +27,16 @@ function unwrapFeature(payload) {
   return null;
 }
 
-export default function ControlsCard({
-  pickTarget,
-  onStartPick,
-  onCancelPick,
-  onComputeRisk,
-  canCompute,
-  isComputing,
-  onCancelCompute,
-}) {
+const ControlsCard = forwardRef(function ControlsCard(props, ref) {
+  const {
+    pickTarget,
+    onStartPick,
+    onComputeRisk,
+    canCompute,
+    isComputing,
+    onCancelCompute,
+  } = props;
+
   // Route state from context
   const {active, updateActive } = useRoutes();
   const origin = active?.origin || null;
@@ -46,6 +47,10 @@ export default function ControlsCard({
   const [originText, setOriginText] = useState(origin?.label || "");
   const [destText, setDestText] = useState(destination?.label || "");
   const [initialViewDate, setInitialViewDate] = useState(null);
+
+  const controlsCardRef = useRef(null);
+  // expose the DOM node to parent
+  React.useImperativeHandle(ref, () => controlsCardRef.current, []);
 
   const isPickingOrigin = pickTarget === 'origin';
   const isPickingDest = pickTarget === 'destination';
@@ -136,88 +141,92 @@ export default function ControlsCard({
   const showDateTimeChooser = true;
 
   return (
-    <Card className="mb-3">
-      <Card.Body>
-        <Card.Title as="h5" className="mb-3">Route Controls</Card.Title>
+    <div ref={controlsCardRef}>
+      <Card className="mb-3">
+        <Card.Body>
+          <Card.Title as="h5" className="mb-3">Route Controls</Card.Title>
 
-        {/* prevent Enter from submitting before selection commits */}
-        <Form className="mb-3" onSubmit={(e) => e.preventDefault()}>
-          <Form.Label className="mb-1">Origin</Form.Label>
-          <InputGroup className="mb-2">
-            <SearchBox
-              accessToken={MAPBOX_TOKEN}
-              value={originText}
-              onChange={(v) => setOriginText(typeof v === "string" ? v : (v?.target?.value ?? ""))}
-              onRetrieve={handleOriginRetrieve}
-              onSelect={handleOriginSelect}
-              placeholder="Origin address"
-              options={SEARCH_OPTS}
-              onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
-            />
-            <Button
-              variant={isPickingOrigin ? "primary" : "outline-primary"}
-              onClick={() => onStartPick(isPickingOrigin ? null : 'origin')}
-              className="ms-2"
-            >
-              {pickLabel(isPickingOrigin)}
-            </Button>
-            <Button variant="outline-secondary" onClick={clearOrigin} disabled={!origin}>
-              Clear
-            </Button>
-          </InputGroup>
-
-          <Form.Label className="mt-3 mb-1">Destination</Form.Label>
-          <InputGroup className="mb-2">
-            <SearchBox
-              accessToken={MAPBOX_TOKEN}
-              value={destText}
-              onChange={(v) => setDestText(typeof v === "string" ? v : (v?.target?.value ?? ""))}
-              onRetrieve={handleDestRetrieve}
-              onSelect={handleDestSelect}
-              placeholder="Destination address"
-              options={SEARCH_OPTS}
-              onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
-            />
-            <Button
-              variant={isPickingDest ? "primary" : "outline-primary"}
-              onClick={() => onStartPick(isPickingDest ? null : 'destination')}
-              className="ms-2"
-            >
-              {pickLabel(isPickingDest)}
-            </Button>
-            <Button variant="outline-secondary" onClick={clearDestination} disabled={!destination}>
-              Clear
-            </Button>
-          </InputGroup>
-
-          { showDateTimeChooser && initialViewDate &&
-            <div className="form-group">
-              <label htmlFor="dateTimePicker">Date and Time:</label>
-              <DateTime
-                onChange={handleDateTimeChange}
-                initialViewDate={initialViewDate}
-                inputProps={{ placeholder: travelDateTimeText }}
-                dateFormat="YYYY-MM-DD"
-                timeFormat="HH:mm"
+          {/* prevent Enter from submitting before selection commits */}
+          <Form className="mb-3" onSubmit={(e) => e.preventDefault()}>
+            <Form.Label className="mb-1">Origin</Form.Label>
+            <InputGroup className="mb-2">
+              <SearchBox
+                accessToken={MAPBOX_TOKEN}
+                value={originText}
+                onChange={(v) => setOriginText(typeof v === "string" ? v : (v?.target?.value ?? ""))}
+                onRetrieve={handleOriginRetrieve}
+                onSelect={handleOriginSelect}
+                placeholder="Origin address"
+                options={SEARCH_OPTS}
+                onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
               />
-            </div>
-          }
-          <div className="d-flex gap-2 mt-3">
-            <Button
-              variant="primary"
-              onClick={onComputeRisk}
-              disabled={!canCompute || isComputing}
-            >
-              {isComputing ? "Computing…" : "Compute Risk"}
-            </Button>
-            {isComputing && (
-              <Button variant="outline-secondary" onClick={onCancelCompute}>
-                Cancel
+              <Button
+                variant={isPickingOrigin ? "primary" : "outline-primary"}
+                onClick={() => onStartPick(isPickingOrigin ? null : 'origin')}
+                className="ms-2"
+              >
+                {pickLabel(isPickingOrigin)}
               </Button>
-            )}
-          </div>
-        </Form>
-      </Card.Body>
-    </Card>
+              <Button variant="outline-secondary" onClick={clearOrigin} disabled={!origin}>
+                Clear
+              </Button>
+            </InputGroup>
+
+            <Form.Label className="mt-3 mb-1">Destination</Form.Label>
+            <InputGroup className="mb-2">
+              <SearchBox
+                accessToken={MAPBOX_TOKEN}
+                value={destText}
+                onChange={(v) => setDestText(typeof v === "string" ? v : (v?.target?.value ?? ""))}
+                onRetrieve={handleDestRetrieve}
+                onSelect={handleDestSelect}
+                placeholder="Destination address"
+                options={SEARCH_OPTS}
+                onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
+              />
+              <Button
+                variant={isPickingDest ? "primary" : "outline-primary"}
+                onClick={() => onStartPick(isPickingDest ? null : 'destination')}
+                className="ms-2"
+              >
+                {pickLabel(isPickingDest)}
+              </Button>
+              <Button variant="outline-secondary" onClick={clearDestination} disabled={!destination}>
+                Clear
+              </Button>
+            </InputGroup>
+
+            { showDateTimeChooser && initialViewDate &&
+              <div className="form-group">
+                <label htmlFor="dateTimePicker">Date and Time:</label>
+                <DateTime
+                  onChange={handleDateTimeChange}
+                  initialViewDate={initialViewDate}
+                  inputProps={{ placeholder: travelDateTimeText }}
+                  dateFormat="YYYY-MM-DD"
+                  timeFormat="HH:mm"
+                />
+              </div>
+            }
+            <div className="d-flex gap-2 mt-3">
+              <Button
+                variant="primary"
+                onClick={onComputeRisk}
+                disabled={!canCompute || isComputing}
+              >
+                {isComputing ? "Computing…" : "Compute Risk"}
+              </Button>
+              {isComputing && (
+                <Button variant="outline-secondary" onClick={onCancelCompute}>
+                  Cancel
+                </Button>
+              )}
+            </div>
+          </Form>
+        </Card.Body>
+      </Card>
+    </div>
   );
-}
+});
+
+export default ControlsCard;
