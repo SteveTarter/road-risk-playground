@@ -44,6 +44,20 @@ function AppInner() {
     };
   }, [active]);
 
+  function extractEndpointsFromDirections(data) {
+    const coords = data?.coordinates;
+    if (Array.isArray(coords) && coords.length >= 2) {
+      const [oLng, oLat] = coords[0];
+      const [dLng, dLat] = coords[coords.length - 1];
+      return {
+        origin: { lng: oLng, lat: oLat, label: "" },
+        destination: { lng: dLng, lat: dLat, label: "" },
+      };
+    }
+
+    return null;
+  }
+
   // Initialize the active route's travel time once, if empty
   useEffect(() => {
     if (!active) {
@@ -89,6 +103,7 @@ function AppInner() {
 
       const data = await response.json();
       var routeData = data.mapbox_data?.routes?.[0]?.geometry ?? null;
+      const endpoints = extractEndpointsFromDirections(routeData);
 
       // Persist results on the active route
       setActiveResult({
@@ -97,7 +112,10 @@ function AppInner() {
         status: "done",
       });
 
-      updateActive({ routeData: routeData })
+      updateActive({
+        routeData: routeData,
+        ...(endpoints ? { origin: endpoints.origin, destination: endpoints.destination } : {}),
+      })
 
       // Immediately create a new route and switch to it.
       addRoute();
