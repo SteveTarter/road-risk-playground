@@ -28,6 +28,8 @@ function AppInner() {
   const abortRef = useRef(null);
   const controlsCardRef = useRef(null);
   const mapComponentRef = useRef(null);
+  const resultsCardRef = useRef(null);
+  const hasInteractedRef = useRef(false);
 
   const canCompute = !!active?.origin && !!active?.destination && !!active?.travelDateTimeText;
   const isComputing = active?.status === "loading";
@@ -80,7 +82,21 @@ function AppInner() {
     if (pickTarget) {
       // Scroll to the MapComponent so that the location can be clicked without user scrolling..
       if (mapComponentRef.current) {
-        mapComponentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start'});
+        const rect = mapComponentRef.current.getBoundingClientRect();
+        const absoluteY = window.scrollY + rect.top;
+        window.scrollTo({
+          top: absoluteY - 10,
+          behavior: 'smooth',
+        });
+      }
+    } else {
+      if (controlsCardRef.current && resultsCardRef.current) {
+        const rect = controlsCardRef.current.getBoundingClientRect();
+        const absoluteY = window.scrollY + rect.top;
+        window.scrollTo({
+          top: absoluteY - 10,
+          behavior: 'smooth',
+        });
       }
     }
   }, [pickTarget]);
@@ -92,6 +108,7 @@ function AppInner() {
 
     try {
       setActiveStatus("loading", null);
+      hasInteractedRef.current = true;
 
       // Cancel any in-flight request
       abortRef.current?.abort();
@@ -123,11 +140,6 @@ function AppInner() {
         status: "done",
       });
 
-      // Scroll to the MapComponent so that the ResultsCard will also be seen on mobile screens.
-      if (mapComponentRef.current) {
-        mapComponentRef.current.scrollIntoView({ behavior: 'smooth', block: 'start'});
-      }
-
       updateActive({
         routeData: routeData,
         ...(endpoints ? { origin: endpoints.origin, destination: endpoints.destination } : {}),
@@ -153,6 +165,37 @@ function AppInner() {
   const selectActiveInfoSection = (section) => {
     setActiveInfoSection(prev => (prev === section ? '' : section));
   }
+
+  // Helper to scroll with a fixed-header offset
+  const scrollResultsIntoView = useCallback(() => {
+    const el = resultsCardRef.current;
+    if (!el) {
+      return;
+    }
+    const rect = el.getBoundingClientRect();
+    const top = window.scrollY + rect.top - 700; // adjust offset for navbar
+    window.scrollTo({ top, behavior: "smooth" });
+  }, []);
+
+  // Detect “a new completed result exists”
+  const { routes } = useRoutes();
+  const completedCount = useMemo(
+    () => routes.filter(r => r?.status === "done" && r?.prediction != null && r?.modelInputs).length,
+    [routes]
+  );
+
+  const prevCompletedRef = useRef(0);
+  useEffect(() => {
+    if (completedCount > prevCompletedRef.current) {
+      // Wait for DOM paint so the ResultsCard actually mounts before we scroll
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollResultsIntoView();
+        });
+      });
+    }
+    prevCompletedRef.current = completedCount;
+  }, [completedCount, scrollResultsIntoView]);
 
   return (
     <>
@@ -184,10 +227,11 @@ function AppInner() {
                   ref={mapComponentRef}
                   pickTarget={pickTarget}
                   onCancelPick={() => setPickTarget(null)}
+                  hasInteracted={hasInteractedRef.current}
                 />
               </Col>
               <Col xs={12} md={12}>
-                <ResultsCard />
+                <ResultsCard ref={resultsCardRef} />
               </Col>
             </Row>
           </>
