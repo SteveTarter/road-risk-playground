@@ -7,7 +7,7 @@ const isComplete = (r) =>
 
 function fmt(value) {
   if (typeof value === "boolean") {
-    return value ? "True" : "False";
+    return value ? "true" : "false";
   }
   if (typeof value === "number") {
     return value.toLocaleString(undefined, { maximumFractionDigits: 3 });
