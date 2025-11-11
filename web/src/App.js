@@ -30,6 +30,7 @@ function AppInner() {
   const mapComponentRef = useRef(null);
   const resultsCardRef = useRef(null);
   const hasInteractedRef = useRef(false);
+  const hasChosenPointRef = useRef(false);
 
   const canCompute = !!active?.origin && !!active?.destination && !!active?.travelDateTimeText;
   const isComputing = active?.status === "loading";
@@ -83,20 +84,15 @@ function AppInner() {
       // Scroll to the MapComponent so that the location can be clicked without user scrolling..
       if (mapComponentRef.current) {
         const rect = mapComponentRef.current.getBoundingClientRect();
-        const absoluteY = window.scrollY + rect.top;
-        window.scrollTo({
-          top: absoluteY - 10,
-          behavior: 'smooth',
-        });
+        const offsetY = rect.top;
+        window.scrollBy(0, offsetY);
+        hasChosenPointRef.current = true;
       }
     } else {
-      if (controlsCardRef.current && resultsCardRef.current) {
+      if (controlsCardRef.current && hasChosenPointRef.current) {
         const rect = controlsCardRef.current.getBoundingClientRect();
-        const absoluteY = window.scrollY + rect.top;
-        window.scrollTo({
-          top: absoluteY - 10,
-          behavior: 'smooth',
-        });
+        const offsetY = rect.top;
+        window.scrollBy(0, offsetY);
       }
     }
   }, [pickTarget]);
@@ -168,13 +164,13 @@ function AppInner() {
 
   // Helper to scroll with a fixed-header offset
   const scrollResultsIntoView = useCallback(() => {
-    const el = resultsCardRef.current;
-    if (!el) {
-      return;
+    if (mapComponentRef.current) {
+      const rect = mapComponentRef.current.getBoundingClientRect();
+      const offsetY = rect.top;
+      window.scrollBy(0, offsetY);
     }
-    const rect = el.getBoundingClientRect();
-    const top = window.scrollY + rect.top - 700; // adjust offset for navbar
-    window.scrollTo({ top, behavior: "smooth" });
+
+    return;
   }, []);
 
   // Detect “a new completed result exists”
