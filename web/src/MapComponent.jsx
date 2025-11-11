@@ -60,6 +60,7 @@ const MapComponent = forwardRef(function MapComponent(props, ref) {
   const {
     pickTarget,           // "origin" | "destination" | null
     onCancelPick,         // () => void
+    hasInteracted,        // has a prediction been made
   } = props;
 
   const { routes, activeIndex, active, updateActive } = useRoutes();
@@ -70,7 +71,6 @@ const MapComponent = forwardRef(function MapComponent(props, ref) {
 
   // spinner if any active route is loading
   const isDataLoading = routes.some((r) => r.status === "loading");
-
 
   const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
   const mapStyle = MAP_STYLE_STREET;
@@ -109,7 +109,7 @@ const MapComponent = forwardRef(function MapComponent(props, ref) {
       if (r.destination) {
         b = extendBBox(b, [r.destination.lng, r.destination.lat, r.destination.lng, r.destination.lat]);
       }
-      // if you store a route geojson bbox on r.routeData?.bbox = [minX,minY,maxX,maxY], include it:
+      // if r.routeData is available, include it:
       if (r.routeData) {
         // Calculate the bounds of this route based on the points on the route.
         var minLat = Infinity;
@@ -138,6 +138,11 @@ const MapComponent = forwardRef(function MapComponent(props, ref) {
       return;
     }
 
+    // If there are no routes, don't fit to bounds when first coordinate chosen.
+    if (!hasInteracted && !(routes[0].origin && routes[0].destination)) {
+      return;
+    }
+
     map.fitBounds(
       [
         [combinedBBox[0], combinedBBox[1]],
@@ -145,7 +150,7 @@ const MapComponent = forwardRef(function MapComponent(props, ref) {
       ],
       { padding: { top: 40, bottom: 40, left: 40, right: 40 } }
     );
-  }, [combinedBBox]);
+  }, [combinedBBox, hasInteracted, routes]);
 
   useEffect(() => {
     const map = mapRef.current?.getMap ? mapRef.current.getMap() : mapRef.current;

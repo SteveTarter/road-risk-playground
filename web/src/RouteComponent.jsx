@@ -55,7 +55,7 @@ export default function RouteComponent({
         </Source>
       )}
 
-      {/* Optional: show markers for this route too (color-coded) */}
+      {/* Show markers for this route too (color-coded) */}
       {origin && (
         <Marker longitude={origin.lng} latitude={origin.lat} color={color}/>
       )}
