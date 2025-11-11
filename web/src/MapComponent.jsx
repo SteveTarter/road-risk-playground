@@ -8,6 +8,7 @@ import "./MapComponent.css"
 
 const mapboxToken = process.env.REACT_APP_MAPBOX_TOKEN;
 const mapboxApiUrl = process.env.REACT_APP_MAPBOX_API_URL;
+const DEFAULT_VIEW = { longitude: -73.977625, latitude: 40.76148, zoom: 10 };
 
 async function reverseGeocodeSnap(lng, lat) {
   const url =
@@ -63,7 +64,7 @@ const MapComponent = forwardRef(function MapComponent(props, ref) {
     hasInteracted,        // has a prediction been made
   } = props;
 
-  const { routes, activeIndex, active, updateActive } = useRoutes();
+  const { routes, active, updateActive } = useRoutes();
 
   const mapRef = useRef(null);
   const containerRef = useRef(null);
@@ -74,6 +75,9 @@ const MapComponent = forwardRef(function MapComponent(props, ref) {
 
   const MAP_STYLE_STREET = "mapbox://styles/mapbox/standard";
   const mapStyle = MAP_STYLE_STREET;
+
+
+  const [viewState, setViewState] = useState(DEFAULT_VIEW);
 
   const mapComponentRef = useRef(null);
   // expose the DOM node to parent
@@ -97,6 +101,32 @@ const MapComponent = forwardRef(function MapComponent(props, ref) {
     ro.observe(containerRef.current);
 
     return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const resp = await fetch("https://ipapi.co/json/");
+        if (!resp.ok) {
+          return;
+        }
+
+        const json = await resp.json();
+        let lat = Number(json.latitude);
+        let lng = Number(json.longitude);
+
+        if (!cancelled && Number.isFinite(lat) && Number.isFinite(lng)) {
+          setViewState(v => ({ ...v, longitude: lng, latitude: lat, zoom: 10 }));
+        }
+      }
+      catch {
+        /* ignore - keep DEFAULT_VIEW */
+      }
+    })();
+
+    return () => { cancelled = true; }
   }, []);
 
   // compute an overall bbox across all routes (origins/dests + optional routeData bbox)
@@ -221,14 +251,12 @@ const MapComponent = forwardRef(function MapComponent(props, ref) {
               mapStyle={mapStyle}
               mapboxAccessToken={mapboxToken}
               fog={{}}
-              initialViewState={{
-                longitude: -97.5,
-                latitude: 32.75,
-                zoom: 10,
-              }}
+              {...viewState}
+              onMove={evt => setViewState(evt.viewState)}
+              initialViewState={DEFAULT_VIEW}
               style={{ width: "100%", height: "100%" }}
             >
-            {/* Render ALL routes; active route is highlighted */}
+            {/* Render ALL routes */}
             {routes.map((r, i) => (
               <RouteComponent
                 id={r.id}
@@ -237,7 +265,6 @@ const MapComponent = forwardRef(function MapComponent(props, ref) {
                 destination={r.destination}
                 routeData={r.routeData }
                 color={pickColor(i)}
-                isDimmed={i !== activeIndex}    // let RouteComponent reduce opacity when not active
               />
             ))}
               {isDataLoading ?

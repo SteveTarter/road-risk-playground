@@ -30,7 +30,6 @@ function AppInner() {
   const mapComponentRef = useRef(null);
   const resultsCardRef = useRef(null);
   const hasInteractedRef = useRef(false);
-  const hasChosenPointRef = useRef(false);
 
   const canCompute = !!active?.origin && !!active?.destination && !!active?.travelDateTimeText;
   const isComputing = active?.status === "loading";
@@ -78,6 +77,9 @@ function AppInner() {
     localIso = localIso.slice(0, 10) + " " + localIso.slice(11, 16); // YYYY-MM-DD HH:mm
     updateActive({ travelDateTimeText: localIso });
   }, [active, updateActive]);
+
+  // Ensure scroll to ControlCard doesn't occur on initial paint of window.
+  const hasChosenPointRef = useRef(false);
 
   useEffect(() => {
     if (pickTarget) {
